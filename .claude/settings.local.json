@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@14 . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git)",
+      "Read(//c/Users/alion/Desktop/**)",
+      "Bash(npx create-next-app@14 dnew-app --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git)",
+      "Bash(cp -r C:/Users/alion/Desktop/dnew-app/. C:/Users/alion/Desktop/dnew/)",
+      "Bash(rm -rf C:/Users/alion/Desktop/dnew-app)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init --defaults)",
+      "Bash(npx shadcn@latest add card input textarea label select badge tabs toast progress separator avatar dialog dropdown-menu scroll-area tooltip)",
+      "Bash(npx shadcn@latest add card input textarea label select badge tabs progress separator avatar dialog dropdown-menu scroll-area tooltip)",
+      "Bash(npm run:*)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(npx playwright:*)",
+      "Bash(node:*)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(cmd /c \"taskkill /F /IM node.exe\")",
+      "Bash(npx tsx:*)",
+      "Bash(grep -rn --include=\"*.tsx\" -P \"[A-Za-z]{3,}\" C:/Users/alion/Desktop/dnew/src/app C:/Users/alion/Desktop/dnew/src/components)",
+      "Bash(grep -v \"className=\\\\|import \\\\|from '\\\\|console\\\\.\\\\|toast\\\\.\\\\|router\\\\.\\\\|supabase\\\\.\\\\|fetch\\\\|href=\\\\|type=\\\\|value=\\\\|placeholder=\\\\|id=\\\\|key=\\\\|aria-\\\\|data-\\\\|variant=\\\\|size=\\\\|onClick=\\\\|onChange=\\\\|onKeyDown=\\\\|disabled=\\\\|autoComplete=\\\\|style=\\\\|//\\\\|{loading\\\\|{sending\\\\|{uploading\\\\|{result\\\\|{contents\\\\|{org\\\\|{user\\\\|{alerts\\\\|{tab\\\\|{item\\\\|{faq\\\\|{c,\\\\|{s}\\\\|\\\\.map\\\\|\\\\.filter\\\\|\\\\.find\\\\|\\\\.length\\\\|\\\\.push\\\\|new Date\\\\|Math\\\\.\\\\|String\\\\|parseInt\\\\|MOCK_\\\\|const \\\\|let \\\\|function \\\\|async \\\\|await \\\\|return \\\\|export \\\\|interface \\\\|type \\\\|useState\\\\|useEffect\\\\|useRouter\\\\|setLoading\\\\|setResult\\\\|setStep\\\\|setTreat\")",
+      "Bash(grep -oP '\"[A-Za-z][^\"]{2,}\"')",
+      "Bash(grep -rn --include=\"*.tsx\" -E \">[[:space:]]*[A-Z][a-zA-Z ]{2,}[[:space:]]*<\" C:/Users/alion/Desktop/dnew/src/app C:/Users/alion/Desktop/dnew/src/components)",
+      "Bash(nslookup cluster0.rfkmznm.mongodb.net)",
+      "Bash(nslookup _mongodb._tcp.cluster0.rfkmznm.mongodb.net)",
+      "Bash(nslookup:*)",
+      "Bash(npm list:*)",
+      "Bash(curl -s -X POST http://localhost:3003/api/ai/compliance -H 'Content-Type: application/json' -d '{\"text\": \"test\"}')"
+    ]
+  }
+}
