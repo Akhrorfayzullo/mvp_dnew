@@ -20,7 +20,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
           <span className="font-bold">DNEW AI 관리자 패널</span>
         </div>
-        <a href="/dashboard" className="text-sm text-white/70 hover:text-white">대시보드로 이동 →</a>
+        <div className="flex items-center gap-4">
+          <a href="/admin" className="text-sm text-white/70 hover:text-white">개요</a>
+          <a href="/admin/requests" className="text-sm text-white/70 hover:text-white">요청 관리</a>
+          <a href="/dashboard" className="text-sm text-white/70 hover:text-white">대시보드로 이동 →</a>
+        </div>
       </div>
       {children}
     </div>
