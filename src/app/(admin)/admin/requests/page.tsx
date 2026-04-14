@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServiceClient } from '@/lib/supabase/server'
 import { MessageSquare } from 'lucide-react'
 import RequestsTable, { type RequestRow } from '@/components/admin/RequestsTable'
@@ -10,22 +9,13 @@ export default async function RequestsPage() {
 
   const { data: requests } = await supabase
     .from('requests')
-    .select(`
-      id,
-      message,
-      category,
-      priority,
-      status,
-      assigned_to,
-      telegram_chat_id,
-      created_at,
-      organizations ( name )
-    `)
+    .select('*')
     .order('created_at', { ascending: false })
 
-  const rows: RequestRow[] = ((requests as any[]) ?? []).map((r: any) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows: RequestRow[] = (requests ?? []).map((r: any) => ({
     id: r.id,
-    org_name: r.organizations?.name ?? r.organizations?.[0]?.name ?? '알 수 없음',
+    org_name: '병원',
     message: r.message,
     category: r.category,
     priority: r.priority,
