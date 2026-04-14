@@ -24,7 +24,7 @@ export default async function RequestsPage() {
 
   const rows: RequestRow[] = (requests ?? []).map((r) => ({
     id: r.id,
-    org_name: (r.organizations as { name: string } | null)?.name ?? '알 수 없음',
+    org_name: (Array.isArray(r.organizations) ? r.organizations[0] : r.organizations)?.name ?? '알 수 없음',
     message: r.message,
     category: r.category,
     priority: r.priority,
