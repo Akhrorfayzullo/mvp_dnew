@@ -151,7 +151,7 @@ export default function RequestsTable({ initial }: { initial: RequestRow[] }) {
                       <td className="px-4 py-3 whitespace-nowrap">
                         <Select
                           defaultValue={row.status}
-                          onValueChange={(val) => updateStatus(row.id, val)}
+                          onValueChange={(val) => val && updateStatus(row.id, val)}
                         >
                           <SelectTrigger className={`h-7 text-xs w-24 border-0 ${STATUS_COLOR[row.status] ?? ''}`}>
                             <SelectValue>{STATUS_LABEL[row.status] ?? row.status}</SelectValue>
