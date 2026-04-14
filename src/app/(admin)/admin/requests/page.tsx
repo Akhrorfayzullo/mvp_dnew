@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { createServiceClient } from '@/lib/supabase/server'
 import { MessageSquare } from 'lucide-react'
 import RequestsTable, { type RequestRow } from '@/components/admin/RequestsTable'
@@ -24,7 +25,9 @@ export default async function RequestsPage() {
 
   const rows: RequestRow[] = (requests ?? []).map((r) => ({
     id: r.id,
-    org_name: (r.organizations as any)?.name ?? '알 수 없음',
+    org_name: Array.isArray(r.organizations)
+      ? (r.organizations[0] as any)?.name ?? '알 수 없음'
+      : (r.organizations as any)?.name ?? '알 수 없음',
     message: r.message,
     category: r.category,
     priority: r.priority,

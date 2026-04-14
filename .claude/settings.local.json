@@ -28,7 +28,8 @@
       "Bash(curl -s -X POST http://localhost:3003/api/ai/compliance -H 'Content-Type: application/json' -d '{\"text\": \"test\"}')",
       "Bash(git add:*)",
       "Bash(git commit -m ':*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
