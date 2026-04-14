@@ -25,7 +25,10 @@
       "Bash(nslookup _mongodb._tcp.cluster0.rfkmznm.mongodb.net)",
       "Bash(nslookup:*)",
       "Bash(npm list:*)",
-      "Bash(curl -s -X POST http://localhost:3003/api/ai/compliance -H 'Content-Type: application/json' -d '{\"text\": \"test\"}')"
+      "Bash(curl -s -X POST http://localhost:3003/api/ai/compliance -H 'Content-Type: application/json' -d '{\"text\": \"test\"}')",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)"
     ]
   }
 }
