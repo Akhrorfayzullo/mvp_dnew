@@ -364,36 +364,57 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
 
       {/* Create dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>새 병원 추가</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-purple-600" />
+              새 병원 추가
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4 pt-2">
+          <form onSubmit={handleCreate} className="space-y-4 pt-1">
+            {/* Header card */}
+            <div className="bg-purple-50 rounded-xl p-4 flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Plus className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">{form.name || '병원명을 입력하세요'}</p>
+                <p className="text-xs text-gray-500">{form.specialty}</p>
+              </div>
+              <div className="ml-auto">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${PLAN_COLOR[form.plan_type] ?? PLAN_COLOR.lite}`}>
+                  {PLAN_LABEL[form.plan_type] ?? form.plan_type}
+                </span>
+              </div>
+            </div>
+
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">
-                {error}
-              </div>
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{error}</div>
             )}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-1.5">
-                <Label htmlFor="name">병원명 *</Label>
-                <Input id="name" value={form.name} onChange={(e) => field('name', e.target.value)} required placeholder="서울피부과의원" />
+
+            {/* Basic info */}
+            <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                <span className="text-sm text-gray-500 w-24 flex-shrink-0">병원명 *</span>
+                <Input value={form.name} onChange={(e) => field('name', e.target.value)} required placeholder="서울피부과의원" className="border-0 p-0 h-auto focus-visible:ring-0 text-sm font-medium" />
               </div>
-              <div className="space-y-1.5">
-                <Label>진료과목</Label>
+              <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                <span className="text-sm text-gray-500 w-24 flex-shrink-0">진료과목</span>
                 <Select value={form.specialty ?? ''} onValueChange={(v) => field('specialty', v as string)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="border-0 p-0 h-auto focus:ring-0 text-sm font-medium shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {SPECIALTIES.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
+                    {SPECIALTIES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>플랜</Label>
+              <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                <span className="text-sm text-gray-500 w-24 flex-shrink-0">플랜</span>
                 <Select value={form.plan_type ?? ''} onValueChange={(v) => field('plan_type', v as string)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="border-0 p-0 h-auto focus:ring-0 text-sm font-medium shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="lite">라이트</SelectItem>
                     <SelectItem value="pro">프로</SelectItem>
@@ -401,28 +422,37 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2 space-y-1.5">
-                <Label htmlFor="email">이메일 *</Label>
-                <Input id="email" type="email" value={form.email} onChange={(e) => field('email', e.target.value)} required placeholder="hospital@example.com" />
-              </div>
-              <div className="col-span-2 space-y-1.5">
-                <Label htmlFor="password">비밀번호 * (8자 이상)</Label>
-                <Input id="password" type="password" value={form.password} onChange={(e) => field('password', e.target.value)} required minLength={8} placeholder="••••••••" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="credits">초기 크레딧</Label>
-                <Input id="credits" type="number" min="0" value={form.credit_balance} onChange={(e) => field('credit_balance', e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="phone">전화번호</Label>
-                <Input id="phone" value={form.phone} onChange={(e) => field('phone', e.target.value)} placeholder="02-1234-5678" />
-              </div>
-              <div className="col-span-2 space-y-1.5">
-                <Label htmlFor="address">주소</Label>
-                <Input id="address" value={form.address} onChange={(e) => field('address', e.target.value)} placeholder="서울특별시 강남구..." />
+              <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                <span className="text-sm text-gray-500 w-24 flex-shrink-0">초기 크레딧</span>
+                <Input type="number" min="0" value={form.credit_balance} onChange={(e) => field('credit_balance', e.target.value)} className="border-0 p-0 h-auto focus-visible:ring-0 text-sm font-medium" />
               </div>
             </div>
-            <DialogFooter className="pt-2">
+
+            {/* Account */}
+            <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                <span className="text-sm text-gray-500 w-24 flex-shrink-0">이메일 *</span>
+                <Input type="email" value={form.email} onChange={(e) => field('email', e.target.value)} required placeholder="hospital@example.com" className="border-0 p-0 h-auto focus-visible:ring-0 text-sm font-medium" />
+              </div>
+              <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                <span className="text-sm text-gray-500 w-24 flex-shrink-0">비밀번호 *</span>
+                <Input type="password" value={form.password} onChange={(e) => field('password', e.target.value)} required minLength={8} placeholder="8자 이상" className="border-0 p-0 h-auto focus-visible:ring-0 text-sm font-medium" />
+              </div>
+            </div>
+
+            {/* Contact */}
+            <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                <span className="text-sm text-gray-500 w-24 flex-shrink-0">전화번호</span>
+                <Input value={form.phone} onChange={(e) => field('phone', e.target.value)} placeholder="02-1234-5678" className="border-0 p-0 h-auto focus-visible:ring-0 text-sm font-medium" />
+              </div>
+              <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                <span className="text-sm text-gray-500 w-24 flex-shrink-0">주소</span>
+                <Input value={form.address} onChange={(e) => field('address', e.target.value)} placeholder="서울특별시 강남구..." className="border-0 p-0 h-auto focus-visible:ring-0 text-sm font-medium" />
+              </div>
+            </div>
+
+            <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowForm(false)}>취소</Button>
               <Button type="submit" className="bg-purple-900 hover:bg-purple-800">병원 추가</Button>
             </DialogFooter>
@@ -432,25 +462,44 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
 
       {/* Edit dialog */}
       <Dialog open={!!editTarget} onOpenChange={(open) => { if (!open) { setEditTarget(null); setEditForm(null); setEditConfirming(false) } }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>병원 정보 수정</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-4 h-4 text-purple-600" />
+              병원 정보 수정
+            </DialogTitle>
           </DialogHeader>
 
           {editConfirming ? (
-            <div className="space-y-4 pt-2">
-              <p className="text-sm text-gray-600">
-                <span className="font-semibold text-gray-900">{editForm?.name}</span>의 정보를 변경하시겠습니까?
-              </p>
-              <div className="bg-gray-50 rounded-lg p-3 space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-gray-500">병원명</span><span className="font-medium">{editForm?.name}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">진료과목</span><span className="font-medium">{editForm?.specialty}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">이메일</span><span className="font-medium">{editForm?.email}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">플랜</span><span className="font-medium">{PLAN_LABEL[editForm?.plan_type ?? ''] ?? editForm?.plan_type}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">크레딧</span><span className="font-medium">{parseInt(editForm?.credit_balance ?? '0').toLocaleString()}</span></div>
-                {editForm?.phone && <div className="flex justify-between"><span className="text-gray-500">전화번호</span><span className="font-medium">{editForm.phone}</span></div>}
-                {editForm?.address && <div className="flex justify-between"><span className="text-gray-500">주소</span><span className="font-medium">{editForm.address}</span></div>}
+            <div className="space-y-4 pt-1">
+              {/* Header card */}
+              <div className="bg-purple-50 rounded-xl p-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-white font-bold text-sm">{editForm?.name.charAt(0)}</span>
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900">{editForm?.name}</p>
+                  <p className="text-xs text-gray-500">변경사항을 확인해주세요</p>
+                </div>
               </div>
+
+              <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+                {[
+                  { label: '병원명', value: editForm?.name },
+                  { label: '진료과목', value: editForm?.specialty },
+                  { label: '이메일', value: editForm?.email },
+                  { label: '플랜', value: PLAN_LABEL[editForm?.plan_type ?? ''] ?? editForm?.plan_type },
+                  { label: '크레딧', value: `${parseInt(editForm?.credit_balance ?? '0').toLocaleString()}` },
+                  { label: '전화번호', value: editForm?.phone || '-' },
+                  { label: '주소', value: editForm?.address || '-' },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between items-center px-4 py-3 bg-white">
+                    <span className="text-sm text-gray-500">{label}</span>
+                    <span className="text-sm font-medium text-gray-900 text-right max-w-[200px] truncate">{value}</span>
+                  </div>
+                ))}
+              </div>
+
               {editError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{editError}</div>
               )}
@@ -461,73 +510,76 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
             </div>
           ) : (
             editForm && (
-              <div className="space-y-3 pt-2">
+              <div className="space-y-4 pt-1">
+                {/* Header card */}
+                <div className="bg-purple-50 rounded-xl p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-bold text-sm">{editTarget?.name.charAt(0)}</span>
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900">{editTarget?.name}</p>
+                    <p className="text-xs text-gray-500">{editTarget?.specialty}</p>
+                  </div>
+                  <div className="ml-auto">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${PLAN_COLOR[editTarget?.plan_type ?? ''] ?? PLAN_COLOR.lite}`}>
+                      {PLAN_LABEL[editTarget?.plan_type ?? ''] ?? editTarget?.plan_type}
+                    </span>
+                  </div>
+                </div>
+
                 {editError && (
                   <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{editError}</div>
                 )}
 
-                {/* Name */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-500">병원명</Label>
-                  <p className="text-xs text-gray-400 mb-1">현재: {editTarget?.name}</p>
-                  <Input value={editForm.name} onChange={(e) => editField('name', e.target.value)} placeholder="새 병원명" />
+                {/* Fields */}
+                <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                    <span className="text-sm text-gray-500 w-24 flex-shrink-0">병원명</span>
+                    <Input value={editForm.name} onChange={(e) => editField('name', e.target.value)} className="border-0 p-0 h-auto focus-visible:ring-0 text-sm font-medium" />
+                  </div>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                    <span className="text-sm text-gray-500 w-24 flex-shrink-0">진료과목</span>
+                    <Select value={editForm.specialty ?? ''} onValueChange={(v) => v && editField('specialty', v)}>
+                      <SelectTrigger className="border-0 p-0 h-auto focus:ring-0 text-sm font-medium shadow-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SPECIALTIES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                    <span className="text-sm text-gray-500 w-24 flex-shrink-0">이메일</span>
+                    <Input type="email" value={editForm.email} onChange={(e) => editField('email', e.target.value)} className="border-0 p-0 h-auto focus-visible:ring-0 text-sm font-medium" />
+                  </div>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                    <span className="text-sm text-gray-500 w-24 flex-shrink-0">플랜</span>
+                    <Select value={editForm.plan_type ?? ''} onValueChange={(v) => v && editField('plan_type', v)}>
+                      <SelectTrigger className="border-0 p-0 h-auto focus:ring-0 text-sm font-medium shadow-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="lite">라이트</SelectItem>
+                        <SelectItem value="pro">프로</SelectItem>
+                        <SelectItem value="enterprise">엔터프라이즈</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                    <span className="text-sm text-gray-500 w-24 flex-shrink-0">크레딧</span>
+                    <Input type="number" min="0" value={editForm.credit_balance} onChange={(e) => editField('credit_balance', e.target.value)} className="border-0 p-0 h-auto focus-visible:ring-0 text-sm font-medium" />
+                  </div>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                    <span className="text-sm text-gray-500 w-24 flex-shrink-0">전화번호</span>
+                    <Input value={editForm.phone} onChange={(e) => editField('phone', e.target.value)} placeholder="02-1234-5678" className="border-0 p-0 h-auto focus-visible:ring-0 text-sm font-medium" />
+                  </div>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                    <span className="text-sm text-gray-500 w-24 flex-shrink-0">주소</span>
+                    <Input value={editForm.address} onChange={(e) => editField('address', e.target.value)} placeholder="서울특별시 강남구..." className="border-0 p-0 h-auto focus-visible:ring-0 text-sm font-medium" />
+                  </div>
                 </div>
 
-                {/* Specialty */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-500">진료과목</Label>
-                  <p className="text-xs text-gray-400 mb-1">현재: {editTarget?.specialty}</p>
-                  <Select value={editForm.specialty ?? ''} onValueChange={(v) => v && editField('specialty', v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {SPECIALTIES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Email */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-500">이메일</Label>
-                  <p className="text-xs text-gray-400 mb-1">현재: {editTarget?.email}</p>
-                  <Input type="email" value={editForm.email} onChange={(e) => editField('email', e.target.value)} placeholder="새 이메일" />
-                </div>
-
-                {/* Plan */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-500">플랜</Label>
-                  <p className="text-xs text-gray-400 mb-1">현재: {PLAN_LABEL[editTarget?.plan_type ?? ''] ?? editTarget?.plan_type}</p>
-                  <Select value={editForm.plan_type ?? ''} onValueChange={(v) => v && editField('plan_type', v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="lite">라이트</SelectItem>
-                      <SelectItem value="pro">프로</SelectItem>
-                      <SelectItem value="enterprise">엔터프라이즈</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Credits */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-500">크레딧</Label>
-                  <p className="text-xs text-gray-400 mb-1">현재: {editTarget?.credit_balance.toLocaleString()}</p>
-                  <Input type="number" min="0" value={editForm.credit_balance} onChange={(e) => editField('credit_balance', e.target.value)} />
-                </div>
-
-                {/* Phone */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-500">전화번호</Label>
-                  <p className="text-xs text-gray-400 mb-1">현재: {editTarget?.phone ?? '-'}</p>
-                  <Input value={editForm.phone} onChange={(e) => editField('phone', e.target.value)} placeholder="02-1234-5678" />
-                </div>
-
-                {/* Address */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-500">주소</Label>
-                  <p className="text-xs text-gray-400 mb-1">현재: {editTarget?.address ?? '-'}</p>
-                  <Input value={editForm.address} onChange={(e) => editField('address', e.target.value)} placeholder="서울특별시 강남구..." />
-                </div>
-
-                <DialogFooter className="pt-2">
+                <DialogFooter>
                   <Button variant="outline" onClick={() => { setEditTarget(null); setEditForm(null) }}>취소</Button>
                   <Button className="bg-purple-900 hover:bg-purple-800" onClick={() => setEditConfirming(true)}>저장</Button>
                 </DialogFooter>
