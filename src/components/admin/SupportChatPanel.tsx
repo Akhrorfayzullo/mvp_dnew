@@ -175,11 +175,12 @@ export default function SupportChatPanel() {
   async function handleClose() {
     if (!activeChat || closing) return
     setClosing(true)
-    await fetch(`/api/admin/support/${activeChat.id}/close`, { method: 'POST' })
+    const closedId = activeChat.id
+    await fetch(`/api/admin/support/${closedId}/close`, { method: 'POST' })
     setActiveChat(null)
     setMessages([])
+    setChats((prev) => prev.filter((c) => c.id !== closedId))
     setClosing(false)
-    fetchChats()
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
