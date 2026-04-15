@@ -63,7 +63,7 @@ export default function SupportChatPanel() {
     }
   }, [])
 
-  // ── Fetch messages for active chat ──────────────────────────────────────────
+  // ── Fetch messages for active chat (with loading spinner) ───────────────────
 
   const fetchMessages = useCallback(async (chatId: string) => {
     setLoadingMessages(true)
@@ -74,6 +74,20 @@ export default function SupportChatPanel() {
     }
     setLoadingMessages(false)
   }, [fetchChats])
+
+  // ── Silent poll — refresh messages without spinner ───────────────────────────
+
+  const silentRefreshMessages = useCallback(async (chatId: string) => {
+    const res = await fetch(`/api/admin/support/${chatId}/messages`)
+    if (res.ok) {
+      const fresh: SupportMessage[] = await res.json()
+      setMessages((prev) => {
+        // Only update if there are new messages to avoid unnecessary re-renders
+        if (fresh.length !== prev.length) return fresh
+        return prev
+      })
+    }
+  }, [])
 
   // ── Keep ref in sync with activeChat state ──────────────────────────────────
 
@@ -87,13 +101,21 @@ export default function SupportChatPanel() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // ── Poll chats every 10s when panel is open ─────────────────────────────────
+  // ── Poll chats every 10s ─────────────────────────────────────────────────────
 
   useEffect(() => {
     fetchChats()
     const interval = setInterval(fetchChats, 10000)
     return () => clearInterval(interval)
   }, [fetchChats])
+
+  // ── Poll messages every 3s when a chat is open (Realtime fallback) ───────────
+
+  useEffect(() => {
+    if (!activeChat) return
+    const interval = setInterval(() => silentRefreshMessages(activeChat.id), 3000)
+    return () => clearInterval(interval)
+  }, [activeChat, silentRefreshMessages])
 
   // ── Supabase Realtime — stable subscription (never restarts) ────────────────
 
