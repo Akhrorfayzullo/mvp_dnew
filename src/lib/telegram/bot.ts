@@ -21,32 +21,38 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // ── Session helpers ───────────────────────────────────────────────────────────
 
 async function getSession(chatId: number) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('telegram_sessions')
     .select('step, email')
     .eq('chat_id', chatId)
     .single()
+  if (error) console.log(`[bot] getSession(${chatId}): no session (${error.code})`)
   return data
 }
 
 async function setSession(chatId: number, step: string, email?: string) {
-  await supabase.from('telegram_sessions').upsert(
+  const { error } = await supabase.from('telegram_sessions').upsert(
     { chat_id: chatId, step, email: email ?? null, updated_at: new Date().toISOString() },
     { onConflict: 'chat_id' }
   )
+  if (error) console.error(`[bot] setSession(${chatId}, ${step}):`, error.message)
+  else console.log(`[bot] setSession(${chatId}) → step=${step}, email=${email ?? 'null'}`)
 }
 
 async function clearSession(chatId: number) {
-  await supabase.from('telegram_sessions').delete().eq('chat_id', chatId)
+  const { error } = await supabase.from('telegram_sessions').delete().eq('chat_id', chatId)
+  if (error) console.error(`[bot] clearSession(${chatId}):`, error.message)
+  else console.log(`[bot] clearSession(${chatId}) done`)
 }
 
 // ── /start ────────────────────────────────────────────────────────────────────
 
 bot.start(async (ctx) => {
-  await clearSession(ctx.chat.id)
-  await ctx.reply(
-    '안녕하세요! DNEW 병원 마케팅 플랫폼입니다. 등록된 이메일 주소를 입력해주세요:'
-  )
+  const chatId = ctx.chat.id
+  console.log(`[bot] /start from chatId=${chatId}`)
+  await clearSession(chatId)
+  await setSession(chatId, 'awaiting_email')
+  await ctx.reply('안녕하세요! DNEW 병원 마케팅 플랫폼입니다. 등록된 이메일 주소를 입력해주세요:')
 })
 
 // ── Text handler ──────────────────────────────────────────────────────────────
@@ -54,16 +60,20 @@ bot.start(async (ctx) => {
 bot.on('text', async (ctx) => {
   const chatId = ctx.chat.id
   const text = ctx.message.text.trim()
+  console.log(`[bot] message from chatId=${chatId}: "${text.slice(0, 40)}"`)
 
-  // ── Already verified: handle requests ──────────────────────────────────────
-  const { data: verifiedOrg } = await supabase
+  // ── STEP A: Check verified org first ─────────────────────────────────────
+  const { data: verifiedOrg, error: verifiedErr } = await supabase
     .from('organizations')
     .select('id, name')
     .eq('telegram_chat_id', chatId)
     .eq('telegram_verified', true)
     .single()
 
+  console.log(`[bot] verifiedOrg check: ${verifiedOrg ? `found (${verifiedOrg.name})` : `not found (${verifiedErr?.code})`}`)
+
   if (verifiedOrg) {
+    console.log(`[bot] → routing to REQUEST HANDLER`)
     try {
       const response = await claude.messages.create({
         model: CLAUDE_MODEL,
@@ -109,26 +119,39 @@ bot.on('text', async (ctx) => {
         `✅ 요청이 접수되었습니다!\n카테고리: ${category}\n우선순위: ${priority}\n예상 소요시간: ${estimatedTime}`
       )
     } catch (err) {
-      console.error('Telegram bot request handling error:', err)
+      console.error('[bot] request handling error:', err)
       await ctx.reply('요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
     }
     return
   }
 
-  // ── Step 2: awaiting password ───────────────────────────────────────────────
+  // ── STEP B: Read session ──────────────────────────────────────────────────
   const session = await getSession(chatId)
+  const step = session?.step ?? 'awaiting_email'
+  console.log(`[bot] → session step="${step}", email="${session?.email ?? 'null'}"`)
 
-  if (session?.step === 'awaiting_password' && session.email) {
-    const { error } = await supabaseAuth.auth.signInWithPassword({
+  // ── STEP C: awaiting_password ─────────────────────────────────────────────
+  if (step === 'awaiting_password') {
+    if (!session?.email) {
+      console.log(`[bot] awaiting_password but no email in session — resetting`)
+      await setSession(chatId, 'awaiting_email')
+      await ctx.reply('세션 오류가 발생했습니다. 이메일을 다시 입력해주세요:')
+      return
+    }
+
+    console.log(`[bot] verifying password for email=${session.email}`)
+    const { error: authErr } = await supabaseAuth.auth.signInWithPassword({
       email: session.email,
       password: text,
     })
 
-    if (error) {
+    if (authErr) {
+      console.log(`[bot] password wrong: ${authErr.message}`)
       await ctx.reply('❌ 비밀번호가 올바르지 않습니다. 다시 시도해주세요.')
       return
     }
 
+    // Password correct — save telegram info
     const { data: org } = await supabase
       .from('organizations')
       .select('id')
@@ -140,6 +163,7 @@ bot.on('text', async (ctx) => {
         .from('organizations')
         .update({ telegram_chat_id: chatId, telegram_verified: true })
         .eq('id', org.id)
+      console.log(`[bot] org ${org.id} verified for chatId=${chatId}`)
     }
 
     await clearSession(chatId)
@@ -147,8 +171,14 @@ bot.on('text', async (ctx) => {
     return
   }
 
-  // ── Step 1: expecting email ─────────────────────────────────────────────────
-  if (EMAIL_REGEX.test(text)) {
+  // ── STEP D: awaiting_email ────────────────────────────────────────────────
+  if (step === 'awaiting_email') {
+    if (!EMAIL_REGEX.test(text)) {
+      console.log(`[bot] not a valid email, prompting again`)
+      await ctx.reply('이메일 형식이 올바르지 않습니다. 등록된 이메일 주소를 입력해주세요:')
+      return
+    }
+
     const { data: org } = await supabase
       .from('organizations')
       .select('id, email')
@@ -156,18 +186,20 @@ bot.on('text', async (ctx) => {
       .single()
 
     if (!org) {
-      await ctx.reply(
-        '❌ 등록된 병원을 찾을 수 없습니다. dnew.co.kr에서 먼저 가입해주세요.'
-      )
+      console.log(`[bot] email not found in organizations: ${text}`)
+      await ctx.reply('❌ 등록된 병원을 찾을 수 없습니다. dnew.co.kr에서 먼저 가입해주세요.')
       return
     }
 
+    console.log(`[bot] email found, moving to awaiting_password`)
     await setSession(chatId, 'awaiting_password', text)
     await ctx.reply('✅ 이메일이 확인되었습니다. 비밀번호를 입력해주세요:')
     return
   }
 
-  // ── Fallback ────────────────────────────────────────────────────────────────
+  // ── Fallback (unknown step) ───────────────────────────────────────────────
+  console.log(`[bot] unknown step="${step}", resetting to awaiting_email`)
+  await setSession(chatId, 'awaiting_email')
   await ctx.reply('먼저 이메일 주소를 입력하여 병원을 인증해주세요.')
 })
 
