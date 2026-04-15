@@ -50,34 +50,50 @@ export default function SupportChatPanel() {
   const activeChatRef = useRef<SupportChat | null>(null)
   const fetchingMessagesRef = useRef(false)
   const fetchingChatsRef = useRef(false)
-  const supabase = createClient()
+  const latestMessagesRequestRef = useRef(0)
+  const [supabase] = useState(() => createClient())
 
   const totalUnread = chats.filter((c) => c.unread_count > 0).length
+  const activeChatId = activeChat?.id ?? null
 
   // ── Fetch chats ─────────────────────────────────────────────────────────────
 
   const fetchChats = useCallback(async () => {
     if (fetchingChatsRef.current) return
     fetchingChatsRef.current = true
-    const res = await fetch('/api/admin/support/chats')
-    if (res.ok) {
-      setChats(await res.json())
-    } else {
-      console.error('[SupportChat] fetchChats failed:', res.status, await res.text())
+    try {
+      const res = await fetch('/api/admin/support/chats', { cache: 'no-store' })
+      if (res.ok) {
+        setChats(await res.json())
+      } else {
+        console.error('[SupportChat] fetchChats failed:', res.status, await res.text())
+      }
+    } finally {
+      fetchingChatsRef.current = false
     }
-    fetchingChatsRef.current = false
   }, [])
 
   // ── Fetch messages for active chat (with loading spinner) ───────────────────
 
   const fetchMessages = useCallback(async (chatId: string) => {
     setLoadingMessages(true)
-    const res = await fetch(`/api/admin/support/${chatId}/messages`)
-    if (res.ok) {
-      setMessages(await res.json())
+    const requestId = ++latestMessagesRequestRef.current
+
+    try {
+      const res = await fetch(`/api/admin/support/${chatId}/messages`, { cache: 'no-store' })
+      if (!res.ok) return
+
+      const nextMessages = await res.json() as SupportMessage[]
+      if (latestMessagesRequestRef.current !== requestId) return
+      if (activeChatRef.current?.id !== chatId) return
+
+      setMessages(nextMessages)
       fetchChats()
+    } finally {
+      if (latestMessagesRequestRef.current === requestId) {
+        setLoadingMessages(false)
+      }
     }
-    setLoadingMessages(false)
   }, [fetchChats])
 
   // ── Silent poll — refresh messages without spinner ───────────────────────────
@@ -85,11 +101,21 @@ export default function SupportChatPanel() {
   const silentRefreshMessages = useCallback(async (chatId: string) => {
     if (fetchingMessagesRef.current) return
     fetchingMessagesRef.current = true
-    const res = await fetch(`/api/admin/support/${chatId}/messages`)
-    if (res.ok) {
-      setMessages(await res.json())
+
+    const requestId = ++latestMessagesRequestRef.current
+
+    try {
+      const res = await fetch(`/api/admin/support/${chatId}/messages`, { cache: 'no-store' })
+      if (!res.ok) return
+
+      const nextMessages = await res.json() as SupportMessage[]
+      if (latestMessagesRequestRef.current !== requestId) return
+      if (activeChatRef.current?.id !== chatId) return
+
+      setMessages(nextMessages)
+    } finally {
+      fetchingMessagesRef.current = false
     }
-    fetchingMessagesRef.current = false
   }, [])
 
   // ── Keep ref in sync with activeChat state ──────────────────────────────────
@@ -115,10 +141,10 @@ export default function SupportChatPanel() {
   // ── Poll messages every 5s when a chat is open (Realtime fallback) ───────────
 
   useEffect(() => {
-    if (!activeChat) return
-    const interval = setInterval(() => silentRefreshMessages(activeChat.id), 5000)
+    if (!activeChatId) return
+    const interval = setInterval(() => silentRefreshMessages(activeChatId), 5000)
     return () => clearInterval(interval)
-  }, [activeChat, silentRefreshMessages])
+  }, [activeChatId, silentRefreshMessages])
 
   // ── Realtime channel 1: support_chats (stable, always active) ───────────────
 
@@ -150,17 +176,18 @@ export default function SupportChatPanel() {
   // ── Realtime channel 2: support_messages (filtered by active chat) ───────────
 
   useEffect(() => {
-    if (!activeChat) return
+    if (!activeChatId) return
+    const chatId = activeChatId
 
     const channel = supabase
-      .channel(`support_messages_${activeChat.id}`)
+      .channel(`support_messages_${chatId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'support_messages',
-          filter: `support_chat_id=eq.${activeChat.id}`,
+          filter: `support_chat_id=eq.${chatId}`,
         },
         (payload) => {
           const msg = payload.new as SupportMessage
@@ -169,7 +196,7 @@ export default function SupportChatPanel() {
             return [...prev, msg]
           })
           // Mark as read
-          fetch(`/api/admin/support/${activeChat.id}/messages`)
+          void fetch(`/api/admin/support/${chatId}/messages`, { cache: 'no-store' })
           // Update unread count in list
           fetchChats()
         }
@@ -177,12 +204,13 @@ export default function SupportChatPanel() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [supabase, activeChat, fetchChats])
+  }, [supabase, activeChatId, fetchChats])
 
   // ── Open a chat ─────────────────────────────────────────────────────────────
 
   function openChat(chat: SupportChat) {
     setActiveChat(chat)
+    setMessages([])
     // Optimistically clear unread count so bell and badge update instantly
     setChats((prev) => prev.map((c) => c.id === chat.id ? { ...c, unread_count: 0 } : c))
     fetchMessages(chat.id)
