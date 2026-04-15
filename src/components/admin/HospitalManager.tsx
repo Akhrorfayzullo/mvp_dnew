@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Building2, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Building2, Plus, Pencil, Trash2, KeyRound } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 export interface HospitalRow {
@@ -80,6 +80,10 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
   const [editForm, setEditForm] = useState<EditForm | null>(null)
   const [editError, setEditError] = useState('')
   const [editConfirming, setEditConfirming] = useState(false)
+  const [pwTarget, setPwTarget] = useState<HospitalRow | null>(null)
+  const [pwValue, setPwValue] = useState('')
+  const [pwConfirming, setPwConfirming] = useState(false)
+  const [pwError, setPwError] = useState('')
   const [form, setForm] = useState(DEFAULT_FORM)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -198,6 +202,28 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
     }
   }
 
+  async function handlePasswordChange() {
+    if (!pwTarget) return
+    setPwError('')
+
+    const res = await fetch(`/api/admin/hospitals/${pwTarget.id}/password`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pwValue }),
+    })
+
+    const data = await res.json()
+    if (!res.ok) {
+      setPwConfirming(false)
+      setPwError(data.error ?? '오류가 발생했습니다.')
+      return
+    }
+
+    setPwTarget(null)
+    setPwValue('')
+    setPwConfirming(false)
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -300,6 +326,13 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
                             title="수정"
                           >
                             <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => { setPwTarget(h); setPwValue(''); setPwConfirming(false); setPwError('') }}
+                            className="text-gray-300 hover:text-yellow-500 transition-colors"
+                            title="비밀번호 변경"
+                          >
+                            <KeyRound className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setDeleteTarget(h)}
@@ -490,6 +523,62 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
                 </DialogFooter>
               </div>
             )
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Password change dialog */}
+      <Dialog open={!!pwTarget} onOpenChange={(open) => { if (!open) { setPwTarget(null); setPwValue(''); setPwConfirming(false); setPwError('') } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>비밀번호 변경</DialogTitle>
+          </DialogHeader>
+
+          {pwConfirming ? (
+            <div className="space-y-4 pt-2">
+              <p className="text-sm text-gray-600">
+                <span className="font-semibold text-gray-900">{pwTarget?.name}</span>의 비밀번호를 변경하시겠습니까?
+              </p>
+              {pwError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{pwError}</div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setPwConfirming(false)}>뒤로</Button>
+                <Button className="bg-purple-900 hover:bg-purple-800" onClick={handlePasswordChange}>확인</Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              <p className="text-sm text-gray-500">
+                <span className="font-medium text-gray-700">{pwTarget?.name}</span>의 새 비밀번호를 입력하세요.
+              </p>
+              {pwError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{pwError}</div>
+              )}
+              <div className="space-y-1.5">
+                <Label>새 비밀번호 (8자 이상)</Label>
+                <Input
+                  type="password"
+                  value={pwValue}
+                  onChange={(e) => setPwValue(e.target.value)}
+                  placeholder="••••••••"
+                  minLength={8}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setPwTarget(null)}>취소</Button>
+                <Button
+                  className="bg-purple-900 hover:bg-purple-800"
+                  onClick={() => {
+                    if (pwValue.length < 8) { setPwError('비밀번호는 8자 이상이어야 합니다.'); return }
+                    setPwError('')
+                    setPwConfirming(true)
+                  }}
+                >
+                  변경
+                </Button>
+              </DialogFooter>
+            </div>
           )}
         </DialogContent>
       </Dialog>
