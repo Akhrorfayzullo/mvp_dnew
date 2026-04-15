@@ -4,16 +4,26 @@ import { claude, CLAUDE_MODEL } from '@/lib/claude/client'
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN!)
 
-// Use service role client to bypass RLS for bot operations
+// Service role client for DB writes (bypasses RLS)
 const supabase = createSupabaseServiceClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Anon client for auth.signInWithPassword (service role skips auth)
+const supabaseAuth = createSupabaseServiceClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// In-memory conversation state per chat_id
+const conversationState = new Map<number, { step: string; email?: string }>()
 
 // /start command
 bot.start(async (ctx) => {
+  conversationState.delete(ctx.chat.id)
   await ctx.reply(
     '안녕하세요! DNEW 병원 마케팅 플랫폼입니다. 등록된 이메일 주소를 입력해주세요:'
   )
@@ -24,7 +34,7 @@ bot.on('text', async (ctx) => {
   const chatId = ctx.chat.id
   const text = ctx.message.text.trim()
 
-  // Check if this chat is already verified
+  // ── Already verified: handle requests ──────────────────────────────────────
   const { data: verifiedOrg } = await supabase
     .from('organizations')
     .select('id, name')
@@ -33,7 +43,6 @@ bot.on('text', async (ctx) => {
     .single()
 
   if (verifiedOrg) {
-    // Already verified — categorize with Claude and save request
     try {
       const response = await claude.messages.create({
         model: CLAUDE_MODEL,
@@ -85,11 +94,44 @@ bot.on('text', async (ctx) => {
     return
   }
 
-  // Not yet verified — check if input is an email
-  if (EMAIL_REGEX.test(text)) {
+  // ── Step 2: awaiting password ───────────────────────────────────────────────
+  const state = conversationState.get(chatId)
+
+  if (state?.step === 'awaiting_password' && state.email) {
+    const { error } = await supabaseAuth.auth.signInWithPassword({
+      email: state.email,
+      password: text,
+    })
+
+    if (error) {
+      await ctx.reply('❌ 비밀번호가 올바르지 않습니다. 다시 시도해주세요.')
+      return
+    }
+
+    // Password correct — find org and save telegram info
     const { data: org } = await supabase
       .from('organizations')
       .select('id')
+      .eq('email', state.email)
+      .single()
+
+    if (org) {
+      await supabase
+        .from('organizations')
+        .update({ telegram_chat_id: chatId, telegram_verified: true })
+        .eq('id', org.id)
+    }
+
+    conversationState.delete(chatId)
+    await ctx.reply('✅ 인증 완료! 이제 요청사항을 보내주세요.')
+    return
+  }
+
+  // ── Step 1: expecting email ─────────────────────────────────────────────────
+  if (EMAIL_REGEX.test(text)) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('id, email')
       .eq('email', text)
       .single()
 
@@ -100,16 +142,12 @@ bot.on('text', async (ctx) => {
       return
     }
 
-    await supabase
-      .from('organizations')
-      .update({ telegram_chat_id: chatId, telegram_verified: true })
-      .eq('id', org.id)
-
-    await ctx.reply('✅ 인증 완료! 이제 요청사항을 보내주세요.')
+    conversationState.set(chatId, { step: 'awaiting_password', email: text })
+    await ctx.reply('✅ 이메일이 확인되었습니다. 비밀번호를 입력해주세요:')
     return
   }
 
-  // Not verified and not an email
+  // ── Fallback ────────────────────────────────────────────────────────────────
   await ctx.reply('먼저 이메일 주소를 입력하여 병원을 인증해주세요.')
 })
 
