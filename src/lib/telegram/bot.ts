@@ -110,6 +110,47 @@ bot.start(async (ctx) => {
   )
 })
 
+// ── /logout ───────────────────────────────────────────────────────────────────
+
+bot.command('logout', async (ctx) => {
+  const chatId = ctx.chat.id
+  console.log(`[bot] /logout from chatId=${chatId}`)
+
+  // Unlink org from this telegram account
+  await supabase
+    .from('organizations')
+    .update({ telegram_chat_id: null, telegram_verified: false })
+    .eq('telegram_chat_id', chatId)
+
+  await clearSession(chatId)
+  await ctx.reply(
+    `✅ 로그아웃되었습니다.\n\n다른 병원 계정으로 로그인하려면 /start 를 입력해주세요.`
+  )
+})
+
+// ── /contact ──────────────────────────────────────────────────────────────────
+
+bot.command('contact', async (ctx) => {
+  await ctx.reply(
+    `📞 *DNEW 담당자 연락처*\n\n👤 Telegram: ${SUPPORT_HANDLE}\n🌐 웹사이트: ${WEBSITE_URL}\n\n문의사항이 있으시면 언제든지 연락해 주세요!`,
+    { parse_mode: 'Markdown' }
+  )
+})
+
+// ── /help ─────────────────────────────────────────────────────────────────────
+
+bot.command('help', async (ctx) => {
+  await ctx.reply(
+    `📋 *사용 가능한 명령어*\n\n` +
+    `/start — 로그인 시작\n` +
+    `/logout — 현재 계정 로그아웃\n` +
+    `/contact — 담당자 연락처 보기\n` +
+    `/help — 명령어 목록 보기\n\n` +
+    `로그인 후 메시지를 보내면 마케팅 요청이 접수됩니다.`,
+    { parse_mode: 'Markdown' }
+  )
+})
+
 // ── Text handler ──────────────────────────────────────────────────────────────
 
 bot.on('text', async (ctx) => {
