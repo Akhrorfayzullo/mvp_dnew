@@ -47,6 +47,7 @@ export default function SupportChatPanel() {
   const [closing, setClosing] = useState(false)
   const [loadingMessages, setLoadingMessages] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const activeChatRef = useRef<SupportChat | null>(null)
   const supabase = createClient()
 
   const totalUnread = chats.filter((c) => c.unread_count > 0).length
@@ -74,6 +75,12 @@ export default function SupportChatPanel() {
     setLoadingMessages(false)
   }, [fetchChats])
 
+  // ── Keep ref in sync with activeChat state ──────────────────────────────────
+
+  useEffect(() => {
+    activeChatRef.current = activeChat
+  }, [activeChat])
+
   // ── Scroll to bottom ────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -88,7 +95,7 @@ export default function SupportChatPanel() {
     return () => clearInterval(interval)
   }, [fetchChats])
 
-  // ── Supabase Realtime — new messages ────────────────────────────────────────
+  // ── Supabase Realtime — stable subscription (never restarts) ────────────────
 
   useEffect(() => {
     const channel = supabase
@@ -98,16 +105,16 @@ export default function SupportChatPanel() {
         { event: 'INSERT', schema: 'public', table: 'support_messages' },
         (payload) => {
           const msg = payload.new as SupportMessage & { support_chat_id: string }
-          // If the message belongs to the active chat, append it
-          if (activeChat && msg.support_chat_id === activeChat.id) {
+          const current = activeChatRef.current
+          if (current && msg.support_chat_id === current.id) {
+            // Append to open chat and mark as read
             setMessages((prev) => {
               if (prev.find((m) => m.id === msg.id)) return prev
               return [...prev, msg]
             })
-            // Mark as read immediately since admin is watching
-            fetch(`/api/admin/support/${activeChat.id}/messages`)
+            fetch(`/api/admin/support/${current.id}/messages`)
           } else {
-            // Otherwise bump unread count
+            // Different chat — bump unread count in list
             fetchChats()
           }
         }
@@ -115,17 +122,15 @@ export default function SupportChatPanel() {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'support_chats' },
-        () => {
-          fetchChats()
-        }
+        () => fetchChats()
       )
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'support_chats' },
         (payload) => {
           fetchChats()
-          // If active chat was closed by admin on another tab/session, reset
-          if (activeChat && payload.new.id === activeChat.id && payload.new.status === 'closed') {
+          const current = activeChatRef.current
+          if (current && payload.new.id === current.id && payload.new.status === 'closed') {
             setActiveChat(null)
             setMessages([])
           }
@@ -134,7 +139,7 @@ export default function SupportChatPanel() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [supabase, activeChat, fetchChats])
+  }, [supabase, fetchChats]) // activeChat removed — use ref instead to keep subscription stable
 
   // ── Open a chat ─────────────────────────────────────────────────────────────
 
