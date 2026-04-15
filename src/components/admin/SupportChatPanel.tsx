@@ -120,30 +120,11 @@ export default function SupportChatPanel() {
     return () => clearInterval(interval)
   }, [activeChat, silentRefreshMessages])
 
-  // ── Supabase Realtime — stable subscription (never restarts) ────────────────
+  // ── Realtime channel 1: support_chats (stable, always active) ───────────────
 
   useEffect(() => {
     const channel = supabase
-      .channel('support_realtime')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'support_messages' },
-        (payload) => {
-          const msg = payload.new as SupportMessage & { support_chat_id: string }
-          const current = activeChatRef.current
-          if (current && msg.support_chat_id === current.id) {
-            // Append to open chat and mark as read
-            setMessages((prev) => {
-              if (prev.find((m) => m.id === msg.id)) return prev
-              return [...prev, msg]
-            })
-            fetch(`/api/admin/support/${current.id}/messages`)
-          } else {
-            // Different chat — bump unread count in list
-            fetchChats()
-          }
-        }
-      )
+      .channel('support_chats_realtime')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'support_chats' },
@@ -164,7 +145,39 @@ export default function SupportChatPanel() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [supabase, fetchChats]) // activeChat removed — use ref instead to keep subscription stable
+  }, [supabase, fetchChats])
+
+  // ── Realtime channel 2: support_messages (filtered by active chat) ───────────
+
+  useEffect(() => {
+    if (!activeChat) return
+
+    const channel = supabase
+      .channel(`support_messages_${activeChat.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_messages',
+          filter: `support_chat_id=eq.${activeChat.id}`,
+        },
+        (payload) => {
+          const msg = payload.new as SupportMessage
+          setMessages((prev) => {
+            if (prev.find((m) => m.id === msg.id)) return prev
+            return [...prev, msg]
+          })
+          // Mark as read
+          fetch(`/api/admin/support/${activeChat.id}/messages`)
+          // Update unread count in list
+          fetchChats()
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [supabase, activeChat, fetchChats])
 
   // ── Open a chat ─────────────────────────────────────────────────────────────
 
