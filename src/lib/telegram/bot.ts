@@ -22,6 +22,13 @@ const supabaseAuth = createSupabaseServiceClient(
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+const COMMAND_LIST =
+  `/start — 로그인 시작\n` +
+  `/chat — 상담원과 채팅\n` +
+  `/logout — 현재 계정 로그아웃\n` +
+  `/contact — 담당자 연락처 보기\n` +
+  `/help — 명령어 목록 보기`
+
 // ── Session helpers ───────────────────────────────────────────────────────────
 
 async function getSession(chatId: number) {
@@ -60,12 +67,60 @@ async function clearSession(chatId: number) {
   if (error) console.error(`[bot] clearSession error:`, error.message)
 }
 
-// ── Shared helpers ────────────────────────────────────────────────────────────
+// ── Support chat helpers ──────────────────────────────────────────────────────
 
-function retryOrContactKeyboard(type: 'email' | 'password') {
+async function getOpenSupportChat(chatId: number) {
+  const { data } = await supabase
+    .from('support_chats')
+    .select('id, case_number')
+    .eq('telegram_chat_id', chatId)
+    .eq('status', 'open')
+    .single()
+  return data
+}
+
+async function openSupportChat(chatId: number, orgId?: string) {
+  const { data, error } = await supabase
+    .from('support_chats')
+    .insert({
+      telegram_chat_id: chatId,
+      org_id: orgId ?? null,
+      status: 'open',
+    })
+    .select('id, case_number')
+    .single()
+  if (error) console.error(`[bot] openSupportChat error:`, error.message)
+  return data
+}
+
+async function closeSupportChat(chatId: number, closedBy: 'user' | 'admin') {
+  const { error } = await supabase
+    .from('support_chats')
+    .update({ status: 'closed', closed_by: closedBy, closed_at: new Date().toISOString() })
+    .eq('telegram_chat_id', chatId)
+    .eq('status', 'open')
+  if (error) console.error(`[bot] closeSupportChat error:`, error.message)
+}
+
+async function saveSupportMessage(supportChatId: string, sender: 'user' | 'admin', content: string) {
+  const { error } = await supabase
+    .from('support_messages')
+    .insert({ support_chat_id: supportChatId, sender, content })
+  if (error) console.error(`[bot] saveSupportMessage error:`, error.message)
+}
+
+// ── Keyboards ─────────────────────────────────────────────────────────────────
+
+function retryOrChatKeyboard(type: 'email' | 'password') {
   return Markup.inlineKeyboard([
     Markup.button.callback('🔄 다시 시도', `retry_${type}`),
-    Markup.button.callback('👤 담당자 문의', 'contact_support'),
+    Markup.button.callback('💬 상담원과 채팅', 'start_support_chat'),
+  ])
+}
+
+function endChatKeyboard() {
+  return Markup.inlineKeyboard([
+    Markup.button.callback('🔚 채팅 종료', 'end_support_chat'),
   ])
 }
 
@@ -97,6 +152,43 @@ bot.action('contact_support', async (ctx) => {
   await sendContactInfo(ctx)
 })
 
+bot.action('start_support_chat', async (ctx) => {
+  const chatId = ctx.chat!.id
+  await ctx.answerCbQuery()
+
+  const existing = await getOpenSupportChat(chatId)
+  if (existing) {
+    await ctx.reply(
+      `💬 이미 열린 채팅이 있습니다. (${existing.case_number})\n\n메시지를 입력하시면 상담원에게 전달됩니다.`,
+      endChatKeyboard()
+    )
+    return
+  }
+
+  const chat = await openSupportChat(chatId)
+  if (!chat) {
+    await ctx.reply('채팅을 시작하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+    return
+  }
+
+  await setSession(chatId, 'in_support_chat')
+  await ctx.reply(
+    `💬 상담원과 채팅이 시작되었습니다.\n\n📋 케이스 번호: *${chat.case_number}*\n\n메시지를 입력하시면 상담원에게 전달됩니다.\n채팅을 종료하려면 아래 버튼을 누르거나 /end 를 입력하세요.`,
+    { parse_mode: 'Markdown', ...endChatKeyboard() }
+  )
+})
+
+bot.action('end_support_chat', async (ctx) => {
+  const chatId = ctx.chat!.id
+  await ctx.answerCbQuery()
+  await closeSupportChat(chatId, 'user')
+  await clearSession(chatId)
+  await ctx.reply(
+    `✅ 채팅이 종료되었습니다. 문의해 주셔서 감사합니다!\n\n📋 *사용 가능한 명령어*\n${COMMAND_LIST}`,
+    { parse_mode: 'Markdown' }
+  )
+})
+
 // ── /start ────────────────────────────────────────────────────────────────────
 
 bot.start(async (ctx) => {
@@ -107,11 +199,64 @@ bot.start(async (ctx) => {
   await ctx.reply(
     `안녕하세요! 👋\n\n저는 *DNEW 마케팅 광고 회사*의 공식 챗봇입니다.\n\n` +
     `📋 *사용 가능한 명령어*\n` +
-    `/start — 로그인 시작\n` +
-    `/logout — 현재 계정 로그아웃\n` +
-    `/contact — 담당자 연락처 보기\n` +
-    `/help — 명령어 목록 보기\n\n` +
+    `${COMMAND_LIST}\n\n` +
     `병원 마케팅 요청을 보내시려면 먼저 인증이 필요합니다.\n\n📧 등록된 이메일 주소를 입력해주세요:`,
+    { parse_mode: 'Markdown' }
+  )
+})
+
+// ── /chat ─────────────────────────────────────────────────────────────────────
+
+bot.command('chat', async (ctx) => {
+  const chatId = ctx.chat.id
+  console.log(`[bot] /chat from chatId=${chatId}`)
+
+  const existing = await getOpenSupportChat(chatId)
+  if (existing) {
+    await ctx.reply(
+      `💬 이미 열린 채팅이 있습니다. (${existing.case_number})\n\n메시지를 입력하시면 상담원에게 전달됩니다.`,
+      endChatKeyboard()
+    )
+    return
+  }
+
+  // Find org if already verified
+  const { data: verifiedOrg } = await supabase
+    .from('organizations')
+    .select('id')
+    .eq('telegram_chat_id', chatId)
+    .eq('telegram_verified', true)
+    .single()
+
+  const chat = await openSupportChat(chatId, verifiedOrg?.id)
+  if (!chat) {
+    await ctx.reply('채팅을 시작하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+    return
+  }
+
+  await setSession(chatId, 'in_support_chat')
+  await ctx.reply(
+    `💬 상담원과 채팅이 시작되었습니다.\n\n📋 케이스 번호: *${chat.case_number}*\n\n메시지를 입력하시면 상담원에게 전달됩니다.\n채팅을 종료하려면 아래 버튼을 누르거나 /end 를 입력하세요.`,
+    { parse_mode: 'Markdown', ...endChatKeyboard() }
+  )
+})
+
+// ── /end ──────────────────────────────────────────────────────────────────────
+
+bot.command('end', async (ctx) => {
+  const chatId = ctx.chat.id
+  console.log(`[bot] /end from chatId=${chatId}`)
+
+  const existing = await getOpenSupportChat(chatId)
+  if (!existing) {
+    await ctx.reply('현재 진행 중인 채팅이 없습니다.')
+    return
+  }
+
+  await closeSupportChat(chatId, 'user')
+  await clearSession(chatId)
+  await ctx.reply(
+    `✅ 채팅이 종료되었습니다. 문의해 주셔서 감사합니다!\n\n📋 *사용 가능한 명령어*\n${COMMAND_LIST}`,
     { parse_mode: 'Markdown' }
   )
 })
@@ -122,7 +267,6 @@ bot.command('logout', async (ctx) => {
   const chatId = ctx.chat.id
   console.log(`[bot] /logout from chatId=${chatId}`)
 
-  // Unlink org from this telegram account
   await supabase
     .from('organizations')
     .update({ telegram_chat_id: null, telegram_verified: false })
@@ -130,13 +274,7 @@ bot.command('logout', async (ctx) => {
 
   await clearSession(chatId)
   await ctx.reply(
-    `✅ 로그아웃되었습니다.\n\n` +
-    `📋 *사용 가능한 명령어*\n` +
-    `/start — 로그인 시작\n` +
-    `/logout — 현재 계정 로그아웃\n` +
-    `/contact — 담당자 연락처 보기\n` +
-    `/help — 명령어 목록 보기\n\n` +
-    `다른 병원 계정으로 로그인하려면 /start 를 입력해주세요.`,
+    `✅ 로그아웃되었습니다.\n\n📋 *사용 가능한 명령어*\n${COMMAND_LIST}\n\n다른 병원 계정으로 로그인하려면 /start 를 입력해주세요.`,
     { parse_mode: 'Markdown' }
   )
 })
@@ -154,12 +292,7 @@ bot.command('contact', async (ctx) => {
 
 bot.command('help', async (ctx) => {
   await ctx.reply(
-    `📋 *사용 가능한 명령어*\n\n` +
-    `/start — 로그인 시작\n` +
-    `/logout — 현재 계정 로그아웃\n` +
-    `/contact — 담당자 연락처 보기\n` +
-    `/help — 명령어 목록 보기\n\n` +
-    `로그인 후 메시지를 보내면 마케팅 요청이 접수됩니다.`,
+    `📋 *사용 가능한 명령어*\n\n${COMMAND_LIST}\n\n로그인 후 메시지를 보내면 마케팅 요청이 접수됩니다.`,
     { parse_mode: 'Markdown' }
   )
 })
@@ -171,7 +304,28 @@ bot.on('text', async (ctx) => {
   const text = ctx.message.text.trim()
   console.log(`[bot] message from chatId=${chatId}: "${text.slice(0, 40)}"`)
 
-  // ── STEP A: Already verified org ─────────────────────────────────────────
+  // ── STEP A: Active support chat ───────────────────────────────────────────
+  const session = await getSession(chatId)
+  if (session?.step === 'in_support_chat') {
+    const supportChat = await getOpenSupportChat(chatId)
+    if (supportChat) {
+      await saveSupportMessage(supportChat.id, 'user', text)
+      console.log(`[bot] → support message saved for ${supportChat.case_number}`)
+      await ctx.reply(
+        `📨 메시지가 상담원에게 전달되었습니다. (${supportChat.case_number})\n\n채팅을 종료하려면 /end 를 입력하세요.`
+      )
+      return
+    }
+    // Support chat was closed externally (by admin), reset session
+    await clearSession(chatId)
+    await ctx.reply(
+      `채팅이 종료되었습니다.\n\n📋 *사용 가능한 명령어*\n${COMMAND_LIST}`,
+      { parse_mode: 'Markdown' }
+    )
+    return
+  }
+
+  // ── STEP B: Already verified org ─────────────────────────────────────────
   const { data: verifiedOrg } = await supabase
     .from('organizations')
     .select('id, name')
@@ -233,14 +387,13 @@ bot.on('text', async (ctx) => {
     return
   }
 
-  // ── STEP B: Read session ──────────────────────────────────────────────────
-  const session = await getSession(chatId)
+  // ── STEP C: Read session ──────────────────────────────────────────────────
   const step = session?.step ?? 'awaiting_email'
   const emailAttempts = session?.email_attempts ?? 0
   const passwordAttempts = session?.password_attempts ?? 0
   console.log(`[bot] → step="${step}" emailAttempts=${emailAttempts} passwordAttempts=${passwordAttempts}`)
 
-  // ── STEP C: awaiting_password ─────────────────────────────────────────────
+  // ── STEP D: awaiting_password ─────────────────────────────────────────────
   if (step === 'awaiting_password') {
     if (!session?.email) {
       await setSession(chatId, 'awaiting_email')
@@ -256,17 +409,17 @@ bot.on('text', async (ctx) => {
     if (authErr) {
       const newAttempts = passwordAttempts + 1
       console.log(`[bot] wrong password attempt ${newAttempts}/${MAX_ATTEMPTS}`)
+      await setSession(chatId, 'awaiting_password', session.email, emailAttempts, newAttempts)
 
       if (newAttempts >= MAX_ATTEMPTS) {
-        await setSession(chatId, 'awaiting_password', session.email, emailAttempts, newAttempts)
         await ctx.reply(
           `❌ 비밀번호를 ${MAX_ATTEMPTS}번 잘못 입력하셨습니다.\n\n어떻게 도와드릴까요?`,
-          retryOrContactKeyboard('password')
+          retryOrChatKeyboard('password')
         )
       } else {
-        await setSession(chatId, 'awaiting_password', session.email, emailAttempts, newAttempts)
         await ctx.reply(
-          `❌ 비밀번호가 올바르지 않습니다. (${newAttempts}/${MAX_ATTEMPTS})\n\n다시 입력해주세요:`
+          `❌ 비밀번호가 올바르지 않습니다. (${newAttempts}/${MAX_ATTEMPTS})\n\n다시 입력해주세요:`,
+          retryOrChatKeyboard('password')
         )
       }
       return
@@ -292,10 +445,13 @@ bot.on('text', async (ctx) => {
     return
   }
 
-  // ── STEP D: awaiting_email ────────────────────────────────────────────────
+  // ── STEP E: awaiting_email ────────────────────────────────────────────────
   if (step === 'awaiting_email') {
     if (!EMAIL_REGEX.test(text)) {
-      await ctx.reply('이메일 형식이 올바르지 않습니다. 등록된 이메일 주소를 입력해주세요:')
+      await ctx.reply(
+        '이메일 형식이 올바르지 않습니다. 등록된 이메일 주소를 입력해주세요:',
+        retryOrChatKeyboard('email')
+      )
       return
     }
 
@@ -308,17 +464,17 @@ bot.on('text', async (ctx) => {
     if (!org) {
       const newAttempts = emailAttempts + 1
       console.log(`[bot] email not found, attempt ${newAttempts}/${MAX_ATTEMPTS}: ${text}`)
+      await setSession(chatId, 'awaiting_email', undefined, newAttempts, 0)
 
       if (newAttempts >= MAX_ATTEMPTS) {
-        await setSession(chatId, 'awaiting_email', undefined, newAttempts, 0)
         await ctx.reply(
-          `❌ 등록된 병원을 ${MAX_ATTEMPTS}번 찾지 못했습니다.\n\n아직 등록되지 않으셨나요? 아래 링크에서 가입하실 수 있습니다:\n🌐 ${WEBSITE_URL}\n\n또는 담당자에게 문의하세요:`,
-          retryOrContactKeyboard('email')
+          `❌ 등록된 병원을 ${MAX_ATTEMPTS}번 찾지 못했습니다.\n\n아직 등록되지 않으셨나요? 🌐 ${WEBSITE_URL}\n\n또는 상담원과 직접 채팅하세요:`,
+          retryOrChatKeyboard('email')
         )
       } else {
-        await setSession(chatId, 'awaiting_email', undefined, newAttempts, 0)
         await ctx.reply(
-          `❌ 등록된 병원을 찾을 수 없습니다. (${newAttempts}/${MAX_ATTEMPTS})\n\n다시 입력하시거나, 아직 가입하지 않으셨다면 ${WEBSITE_URL} 에서 등록해주세요.`
+          `❌ 등록된 병원을 찾을 수 없습니다. (${newAttempts}/${MAX_ATTEMPTS})\n\n다시 시도하시거나 상담원과 채팅하세요:`,
+          retryOrChatKeyboard('email')
         )
       }
       return

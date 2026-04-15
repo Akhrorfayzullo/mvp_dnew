@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import AdminNav from '@/components/admin/AdminNav'
 import LogoutButton from '@/components/admin/LogoutButton'
+import SupportChatPanel from '@/components/admin/SupportChatPanel'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -27,6 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <a href="/dashboard" className="text-sm text-white/70 hover:text-white transition-colors">
             대시보드로 이동 →
           </a>
+          <SupportChatPanel />
           <LogoutButton />
         </div>
       </header>
