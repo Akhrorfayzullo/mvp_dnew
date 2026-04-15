@@ -45,6 +45,7 @@ export default function SupportChatPanel() {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [closing, setClosing] = useState(false)
+  const [loadingMessages, setLoadingMessages] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
@@ -60,12 +61,13 @@ export default function SupportChatPanel() {
   // ── Fetch messages for active chat ──────────────────────────────────────────
 
   const fetchMessages = useCallback(async (chatId: string) => {
+    setLoadingMessages(true)
     const res = await fetch(`/api/admin/support/${chatId}/messages`)
     if (res.ok) {
       setMessages(await res.json())
-      // Refresh chats to reset unread count
       fetchChats()
     }
+    setLoadingMessages(false)
   }, [fetchChats])
 
   // ── Scroll to bottom ────────────────────────────────────────────────────────
@@ -206,7 +208,8 @@ export default function SupportChatPanel() {
 
           {/* Panel */}
           <div
-            className="relative z-50 w-80 bg-white h-full shadow-2xl flex flex-col"
+            className="relative z-50 w-80 bg-white shadow-2xl flex flex-col"
+            style={{ height: '100dvh' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* ── Chat list view ── */}
@@ -294,11 +297,15 @@ export default function SupportChatPanel() {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
-                  {messages.length === 0 && (
+                <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-0">
+                  {loadingMessages ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : messages.length === 0 ? (
                     <p className="text-center text-xs text-gray-400 mt-4">메시지가 없습니다.</p>
-                  )}
-                  {messages.map((msg) => (
+                  ) : null}
+                  {!loadingMessages && messages.map((msg) => (
                     <div
                       key={msg.id}
                       className={`flex ${msg.sender === 'admin' ? 'justify-end' : 'justify-start'}`}
