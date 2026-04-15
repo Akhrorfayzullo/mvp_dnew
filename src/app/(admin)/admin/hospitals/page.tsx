@@ -1,5 +1,4 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import { Building2 } from 'lucide-react'
 import HospitalManager, { type HospitalRow } from '@/components/admin/HospitalManager'
 
 export const dynamic = 'force-dynamic'
@@ -7,10 +6,26 @@ export const dynamic = 'force-dynamic'
 export default async function HospitalsPage() {
   const supabase = await createServiceClient()
 
-  const { data: orgs } = await supabase
-    .from('organizations')
-    .select('id, name, specialty, plan_type, credit_balance, email, telegram_verified, created_at')
-    .order('created_at', { ascending: false })
+  const [{ data: orgs }, { data: reqStats }] = await Promise.all([
+    supabase
+      .from('organizations')
+      .select('id, name, specialty, plan_type, credit_balance, email, telegram_verified, created_at')
+      .order('created_at', { ascending: false }),
+    supabase.from('requests').select('org_id, status'),
+  ])
+
+  // Priority: in_progress > pending > completed > none
+  const summaryMap = new Map<string, 'pending' | 'in_progress' | 'completed'>()
+  for (const r of (reqStats ?? []) as { org_id: string; status: string }[]) {
+    const current = summaryMap.get(r.org_id)
+    if (r.status === 'in_progress') {
+      summaryMap.set(r.org_id, 'in_progress')
+    } else if (r.status === 'pending' && current !== 'in_progress') {
+      summaryMap.set(r.org_id, 'pending')
+    } else if (r.status === 'completed' && !current) {
+      summaryMap.set(r.org_id, 'completed')
+    }
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hospitals: HospitalRow[] = (orgs ?? []).map((o: any) => ({
@@ -22,22 +37,11 @@ export default async function HospitalsPage() {
     email: o.email ?? null,
     telegram_verified: o.telegram_verified ?? false,
     created_at: o.created_at,
+    request_summary: (summaryMap.get(o.id) ?? 'none') as 'none' | 'pending' | 'in_progress' | 'completed',
   }))
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-purple-600" />
-            병원 관리
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            전체 {hospitals.length}개 병원 등록됨
-          </p>
-        </div>
-      </div>
-
       <HospitalManager initial={hospitals} />
     </div>
   )

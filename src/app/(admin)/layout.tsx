@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import AdminNav from '@/components/admin/AdminNav'
+import LogoutButton from '@/components/admin/LogoutButton'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -22,9 +23,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
           <span className="font-bold">DNEW AI 관리자 패널</span>
         </div>
-        <a href="/dashboard" className="text-sm text-white/70 hover:text-white transition-colors">
-          대시보드로 이동 →
-        </a>
+        <div className="flex items-center gap-4">
+          <a href="/dashboard" className="text-sm text-white/70 hover:text-white transition-colors">
+            대시보드로 이동 →
+          </a>
+          <LogoutButton />
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">

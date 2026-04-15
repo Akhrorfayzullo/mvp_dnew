@@ -15,6 +15,17 @@ export async function POST(req: NextRequest) {
 
   const supabase = await createServiceClient()
 
+  // Check email not already used
+  const { data: existing } = await supabase
+    .from('organizations')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (existing) {
+    return NextResponse.json({ error: '이미 등록된 이메일입니다.' }, { status: 400 })
+  }
+
   // 1. Create Supabase Auth user
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
     email,
@@ -46,7 +57,7 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (orgError || !org) {
-    // Roll back auth user
+    console.error('[hospitals POST] org insert error:', orgError)
     await supabase.auth.admin.deleteUser(authData.user.id)
     return NextResponse.json(
       { error: orgError?.message ?? '병원 생성에 실패했습니다.' },
@@ -54,16 +65,16 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // 3. Insert into users table
-  const { error: userError } = await supabase.from('users').insert({
+  // 3. Upsert into users table (trigger may have already created the row)
+  const { error: userError } = await supabase.from('users').upsert({
     id: authData.user.id,
     org_id: org.id,
     email,
     role: 'owner',
-  })
+  }, { onConflict: 'id' })
 
   if (userError) {
-    // Roll back both
+    console.error('[hospitals POST] users insert error:', userError)
     await supabase.auth.admin.deleteUser(authData.user.id)
     await supabase.from('organizations').delete().eq('id', org.id)
     return NextResponse.json(

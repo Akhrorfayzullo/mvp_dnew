@@ -4,22 +4,29 @@ import RequestsTable, { type RequestRow } from '@/components/admin/RequestsTable
 
 export const dynamic = 'force-dynamic'
 
-export default async function RequestsPage() {
+export default async function RequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ org_id?: string }>
+}) {
+  const { org_id } = await searchParams
   const supabase = await createServiceClient()
 
-  const { data: requests } = await supabase
-    .from('requests')
-    .select('*')
-    .order('created_at', { ascending: false })
+  let query = supabase.from('requests').select('*, organizations(name)').order('created_at', { ascending: false })
+  if (org_id) query = query.eq('org_id', org_id)
+
+  const { data: requests } = await query
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows: RequestRow[] = (requests ?? []).map((r: any) => ({
     id: r.id,
-    org_name: '병원',
+    org_id: r.org_id,
+    org_name: (r.organizations as any)?.name ?? '알 수 없음',
     message: r.message,
     category: r.category,
     priority: r.priority,
     status: r.status,
+    source: r.source ?? 'telegram',
     assigned_to: r.assigned_to ?? null,
     telegram_chat_id: r.telegram_chat_id ?? null,
     created_at: r.created_at,
@@ -40,24 +47,33 @@ export default async function RequestsPage() {
             <MessageSquare className="w-5 h-5 text-purple-600" />
             요청 관리
           </h1>
-          <p className="text-sm text-muted-foreground">텔레그램으로 접수된 병원 요청사항</p>
+          <p className="text-sm text-muted-foreground">
+            {org_id ? '선택된 병원의 요청사항' : '텔레그램으로 접수된 병원 요청사항'}
+          </p>
         </div>
-        <div className="flex gap-4 text-sm">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">{counts.total}</p>
-            <p className="text-xs text-muted-foreground">전체</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-yellow-600">{counts.pending}</p>
-            <p className="text-xs text-muted-foreground">대기중</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-blue-600">{counts.in_progress}</p>
-            <p className="text-xs text-muted-foreground">진행중</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-green-600">{counts.completed}</p>
-            <p className="text-xs text-muted-foreground">완료</p>
+        <div className="flex items-center gap-6">
+          {org_id && (
+            <a href="/admin/requests" className="text-sm text-purple-600 hover:underline">
+              ← 전체 요청 보기
+            </a>
+          )}
+          <div className="flex gap-4 text-sm">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">{counts.total}</p>
+              <p className="text-xs text-muted-foreground">전체</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-yellow-600">{counts.pending}</p>
+              <p className="text-xs text-muted-foreground">대기중</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-600">{counts.in_progress}</p>
+              <p className="text-xs text-muted-foreground">진행중</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-600">{counts.completed}</p>
+              <p className="text-xs text-muted-foreground">완료</p>
+            </div>
           </div>
         </div>
       </div>
