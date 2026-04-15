@@ -7,7 +7,7 @@ export async function PATCH(
 ) {
   const { id } = await params
   const body = await req.json()
-  const { name, specialty, plan_type, credit_balance, email } = body
+  const { name, specialty, plan_type, credit_balance, email, phone, address } = body
 
   if (!name) {
     return NextResponse.json({ error: '병원명은 필수입니다.' }, { status: 400 })
@@ -37,6 +37,8 @@ export async function PATCH(
       specialty: specialty || '기타',
       plan_type: plan_type || 'lite',
       credit_balance: credit_balance ?? 0,
+      phone: phone || null,
+      address: address || null,
       ...(email ? { email } : {}),
     })
     .eq('id', id)

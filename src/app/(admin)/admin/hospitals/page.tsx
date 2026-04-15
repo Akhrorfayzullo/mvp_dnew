@@ -9,7 +9,7 @@ export default async function HospitalsPage() {
   const [{ data: orgs }, { data: reqStats }] = await Promise.all([
     supabase
       .from('organizations')
-      .select('id, name, specialty, plan_type, credit_balance, email, telegram_verified, created_at')
+      .select('id, name, specialty, plan_type, credit_balance, email, phone, address, telegram_verified, created_at')
       .order('created_at', { ascending: false }),
     supabase.from('requests').select('org_id, status'),
   ])
@@ -35,6 +35,8 @@ export default async function HospitalsPage() {
     plan_type: o.plan_type,
     credit_balance: o.credit_balance,
     email: o.email ?? null,
+    phone: o.phone ?? null,
+    address: o.address ?? null,
     telegram_verified: o.telegram_verified ?? false,
     created_at: o.created_at,
     request_summary: (summaryMap.get(o.id) ?? 'none') as 'none' | 'pending' | 'in_progress' | 'completed',

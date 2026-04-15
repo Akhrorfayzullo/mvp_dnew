@@ -30,6 +30,8 @@ export interface HospitalRow {
   plan_type: string
   credit_balance: number
   email: string | null
+  phone: string | null
+  address: string | null
   telegram_verified: boolean
   created_at: string
   request_summary: 'none' | 'pending' | 'in_progress' | 'completed'
@@ -65,6 +67,8 @@ type EditForm = {
   email: string
   plan_type: string
   credit_balance: string
+  phone: string
+  address: string
 }
 
 export default function HospitalManager({ initial }: { initial: HospitalRow[] }) {
@@ -97,6 +101,8 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
       email: h.email ?? '',
       plan_type: h.plan_type,
       credit_balance: String(h.credit_balance),
+      phone: h.phone ?? '',
+      address: h.address ?? '',
     })
     setEditError('')
     setEditConfirming(false)
@@ -129,6 +135,8 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
       plan_type: form.plan_type,
       credit_balance: parseInt(form.credit_balance) || 500,
       email: form.email,
+      phone: form.phone || null,
+      address: form.address || null,
       telegram_verified: false,
       created_at: new Date().toISOString(),
       request_summary: 'none' as const,
@@ -397,6 +405,8 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
                 <div className="flex justify-between"><span className="text-gray-500">이메일</span><span className="font-medium">{editForm?.email}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">플랜</span><span className="font-medium">{PLAN_LABEL[editForm?.plan_type ?? ''] ?? editForm?.plan_type}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">크레딧</span><span className="font-medium">{parseInt(editForm?.credit_balance ?? '0').toLocaleString()}</span></div>
+                {editForm?.phone && <div className="flex justify-between"><span className="text-gray-500">전화번호</span><span className="font-medium">{editForm.phone}</span></div>}
+                {editForm?.address && <div className="flex justify-between"><span className="text-gray-500">주소</span><span className="font-medium">{editForm.address}</span></div>}
               </div>
               {editError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{editError}</div>
@@ -458,6 +468,20 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
                   <Label className="text-xs text-gray-500">크레딧</Label>
                   <p className="text-xs text-gray-400 mb-1">현재: {editTarget?.credit_balance.toLocaleString()}</p>
                   <Input type="number" min="0" value={editForm.credit_balance} onChange={(e) => editField('credit_balance', e.target.value)} />
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-500">전화번호</Label>
+                  <p className="text-xs text-gray-400 mb-1">현재: {editTarget?.phone ?? '-'}</p>
+                  <Input value={editForm.phone} onChange={(e) => editField('phone', e.target.value)} placeholder="02-1234-5678" />
+                </div>
+
+                {/* Address */}
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-500">주소</Label>
+                  <p className="text-xs text-gray-400 mb-1">현재: {editTarget?.address ?? '-'}</p>
+                  <Input value={editForm.address} onChange={(e) => editField('address', e.target.value)} placeholder="서울특별시 강남구..." />
                 </div>
 
                 <DialogFooter className="pt-2">
