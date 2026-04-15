@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/admin/support/[id]/messages
 // Returns all messages for a chat and marks user messages as read
 export async function GET(
