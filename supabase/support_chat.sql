@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS support_messages (
 
 CREATE INDEX IF NOT EXISTS idx_support_chats_status         ON support_chats(status);
 CREATE INDEX IF NOT EXISTS idx_support_chats_telegram       ON support_chats(telegram_chat_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_support_chats_open_per_telegram
+  ON support_chats(telegram_chat_id)
+  WHERE status = 'open';
 CREATE INDEX IF NOT EXISTS idx_support_messages_chat_id     ON support_messages(support_chat_id);
 CREATE INDEX IF NOT EXISTS idx_support_messages_unread      ON support_messages(support_chat_id, read_at) WHERE read_at IS NULL;
 

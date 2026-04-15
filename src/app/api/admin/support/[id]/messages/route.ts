@@ -3,6 +3,13 @@ import { createServiceClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0',
+  'Surrogate-Control': 'no-store',
+}
+
 // GET /api/admin/support/[id]/messages
 // Returns all messages for a chat and marks user messages as read
 export async function GET(
@@ -19,7 +26,7 @@ export async function GET(
     .order('created_at', { ascending: true })
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500, headers: NO_STORE_HEADERS })
   }
 
   // Mark all unread user messages as read
@@ -34,5 +41,5 @@ export async function GET(
       .in('id', unreadIds)
   }
 
-  return NextResponse.json(messages ?? [])
+  return NextResponse.json(messages ?? [], { headers: NO_STORE_HEADERS })
 }

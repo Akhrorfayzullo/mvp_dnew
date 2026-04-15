@@ -25,6 +25,10 @@ interface SupportMessage {
   created_at: string
 }
 
+function buildMessagesUrl(chatId: string) {
+  return `/api/admin/support/${chatId}/messages?_=${Date.now()}`
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function timeAgo(iso: string) {
@@ -80,7 +84,7 @@ export default function SupportChatPanel() {
     const requestId = ++latestMessagesRequestRef.current
 
     try {
-      const res = await fetch(`/api/admin/support/${chatId}/messages`, { cache: 'no-store' })
+      const res = await fetch(buildMessagesUrl(chatId), { cache: 'no-store' })
       if (!res.ok) return
 
       const nextMessages = await res.json() as SupportMessage[]
@@ -105,7 +109,7 @@ export default function SupportChatPanel() {
     const requestId = ++latestMessagesRequestRef.current
 
     try {
-      const res = await fetch(`/api/admin/support/${chatId}/messages`, { cache: 'no-store' })
+      const res = await fetch(buildMessagesUrl(chatId), { cache: 'no-store' })
       if (!res.ok) return
 
       const nextMessages = await res.json() as SupportMessage[]
@@ -196,7 +200,7 @@ export default function SupportChatPanel() {
             return [...prev, msg]
           })
           // Mark as read
-          void fetch(`/api/admin/support/${chatId}/messages`, { cache: 'no-store' })
+          void fetch(buildMessagesUrl(chatId), { cache: 'no-store' })
           // Update unread count in list
           fetchChats()
         }
@@ -282,7 +286,7 @@ export default function SupportChatPanel() {
 
           {/* Panel */}
           <div
-            className="relative z-50 w-80 bg-white shadow-2xl flex flex-col"
+            className="relative z-50 w-80 bg-white text-gray-900 shadow-2xl flex flex-col"
             style={{ height: '100dvh' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -414,7 +418,7 @@ export default function SupportChatPanel() {
                     }}
                     placeholder="메시지 입력... (Enter 전송, Shift+Enter 줄바꿈)"
                     rows={2}
-                    className="flex-1 text-sm resize-none border rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder:text-gray-400"
+                    className="flex-1 resize-none rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-900 caret-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder:text-gray-400"
                   />
                   <button
                     onClick={handleSend}

@@ -70,12 +70,19 @@ async function clearSession(chatId: number) {
 // ── Support chat helpers ──────────────────────────────────────────────────────
 
 async function getOpenSupportChat(chatId: number) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('support_chats')
     .select('id, case_number')
     .eq('telegram_chat_id', chatId)
     .eq('status', 'open')
-    .single()
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    console.error(`[bot] getOpenSupportChat error:`, error.message)
+  }
+
   return data
 }
 
