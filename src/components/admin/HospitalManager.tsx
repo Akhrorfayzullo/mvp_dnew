@@ -208,7 +208,7 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
 
               <div className="space-y-1.5">
                 <Label>진료과목</Label>
-                <Select value={form.specialty} onValueChange={(v) => field('specialty', v)}>
+                <Select value={form.specialty} onValueChange={(v) => v && field('specialty', v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {SPECIALTIES.map((s) => (
@@ -220,7 +220,7 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
 
               <div className="space-y-1.5">
                 <Label>플랜</Label>
-                <Select value={form.plan_type} onValueChange={(v) => field('plan_type', v)}>
+                <Select value={form.plan_type} onValueChange={(v) => v && field('plan_type', v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="lite">라이트</SelectItem>
