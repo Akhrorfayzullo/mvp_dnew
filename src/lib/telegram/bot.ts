@@ -105,7 +105,13 @@ bot.start(async (ctx) => {
   await clearSession(chatId)
   await setSession(chatId, 'awaiting_email')
   await ctx.reply(
-    `안녕하세요! 👋\n\n저는 *DNEW 마케팅 광고 회사*의 공식 챗봇입니다.\n\n병원 마케팅 요청을 보내시려면 먼저 인증이 필요합니다.\n\n📧 등록된 이메일 주소를 입력해주세요:`,
+    `안녕하세요! 👋\n\n저는 *DNEW 마케팅 광고 회사*의 공식 챗봇입니다.\n\n` +
+    `📋 *사용 가능한 명령어*\n` +
+    `/start — 로그인 시작\n` +
+    `/logout — 현재 계정 로그아웃\n` +
+    `/contact — 담당자 연락처 보기\n` +
+    `/help — 명령어 목록 보기\n\n` +
+    `병원 마케팅 요청을 보내시려면 먼저 인증이 필요합니다.\n\n📧 등록된 이메일 주소를 입력해주세요:`,
     { parse_mode: 'Markdown' }
   )
 })
@@ -124,7 +130,14 @@ bot.command('logout', async (ctx) => {
 
   await clearSession(chatId)
   await ctx.reply(
-    `✅ 로그아웃되었습니다.\n\n다른 병원 계정으로 로그인하려면 /start 를 입력해주세요.`
+    `✅ 로그아웃되었습니다.\n\n` +
+    `📋 *사용 가능한 명령어*\n` +
+    `/start — 로그인 시작\n` +
+    `/logout — 현재 계정 로그아웃\n` +
+    `/contact — 담당자 연락처 보기\n` +
+    `/help — 명령어 목록 보기\n\n` +
+    `다른 병원 계정으로 로그인하려면 /start 를 입력해주세요.`,
+    { parse_mode: 'Markdown' }
   )
 })
 
