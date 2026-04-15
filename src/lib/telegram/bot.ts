@@ -18,18 +18,39 @@ const supabaseAuth = createSupabaseServiceClient(
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// In-memory conversation state per chat_id
-const conversationState = new Map<number, { step: string; email?: string }>()
+// ── Session helpers ───────────────────────────────────────────────────────────
 
-// /start command
+async function getSession(chatId: number) {
+  const { data } = await supabase
+    .from('telegram_sessions')
+    .select('step, email')
+    .eq('chat_id', chatId)
+    .single()
+  return data
+}
+
+async function setSession(chatId: number, step: string, email?: string) {
+  await supabase.from('telegram_sessions').upsert(
+    { chat_id: chatId, step, email: email ?? null, updated_at: new Date().toISOString() },
+    { onConflict: 'chat_id' }
+  )
+}
+
+async function clearSession(chatId: number) {
+  await supabase.from('telegram_sessions').delete().eq('chat_id', chatId)
+}
+
+// ── /start ────────────────────────────────────────────────────────────────────
+
 bot.start(async (ctx) => {
-  conversationState.delete(ctx.chat.id)
+  await clearSession(ctx.chat.id)
   await ctx.reply(
     '안녕하세요! DNEW 병원 마케팅 플랫폼입니다. 등록된 이메일 주소를 입력해주세요:'
   )
 })
 
-// Text message handler
+// ── Text handler ──────────────────────────────────────────────────────────────
+
 bot.on('text', async (ctx) => {
   const chatId = ctx.chat.id
   const text = ctx.message.text.trim()
@@ -95,11 +116,11 @@ bot.on('text', async (ctx) => {
   }
 
   // ── Step 2: awaiting password ───────────────────────────────────────────────
-  const state = conversationState.get(chatId)
+  const session = await getSession(chatId)
 
-  if (state?.step === 'awaiting_password' && state.email) {
+  if (session?.step === 'awaiting_password' && session.email) {
     const { error } = await supabaseAuth.auth.signInWithPassword({
-      email: state.email,
+      email: session.email,
       password: text,
     })
 
@@ -108,11 +129,10 @@ bot.on('text', async (ctx) => {
       return
     }
 
-    // Password correct — find org and save telegram info
     const { data: org } = await supabase
       .from('organizations')
       .select('id')
-      .eq('email', state.email)
+      .eq('email', session.email)
       .single()
 
     if (org) {
@@ -122,7 +142,7 @@ bot.on('text', async (ctx) => {
         .eq('id', org.id)
     }
 
-    conversationState.delete(chatId)
+    await clearSession(chatId)
     await ctx.reply('✅ 인증 완료! 이제 요청사항을 보내주세요.')
     return
   }
@@ -142,7 +162,7 @@ bot.on('text', async (ctx) => {
       return
     }
 
-    conversationState.set(chatId, { step: 'awaiting_password', email: text })
+    await setSession(chatId, 'awaiting_password', text)
     await ctx.reply('✅ 이메일이 확인되었습니다. 비밀번호를 입력해주세요:')
     return
   }
