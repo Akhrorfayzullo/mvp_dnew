@@ -69,7 +69,7 @@ function retryOrContactKeyboard(type: 'email' | 'password') {
   ])
 }
 
-async function sendContactInfo(ctx: { reply: Function }) {
+async function sendContactInfo(ctx: { reply: (text: string) => Promise<unknown> }) {
   await ctx.reply(
     `담당자에게 직접 문의해 주세요:\n\n📱 Telegram: ${SUPPORT_HANDLE}\n🌐 웹사이트: ${WEBSITE_URL}`
   )

@@ -17,7 +17,7 @@ export default async function RequestsPage({
 
   const { data: requests } = await query
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  /* eslint-disable @typescript-eslint/no-explicit-any */
   const rows: RequestRow[] = (requests ?? []).map((r: any) => ({
     id: r.id,
     org_id: r.org_id,
@@ -31,6 +31,7 @@ export default async function RequestsPage({
     telegram_chat_id: r.telegram_chat_id ?? null,
     created_at: r.created_at,
   }))
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   const counts = {
     total: rows.length,
