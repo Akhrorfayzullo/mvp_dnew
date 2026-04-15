@@ -48,6 +48,8 @@ export default function SupportChatPanel() {
   const [loadingMessages, setLoadingMessages] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const activeChatRef = useRef<SupportChat | null>(null)
+  const fetchingMessagesRef = useRef(false)
+  const fetchingChatsRef = useRef(false)
   const supabase = createClient()
 
   const totalUnread = chats.filter((c) => c.unread_count > 0).length
@@ -55,12 +57,15 @@ export default function SupportChatPanel() {
   // ── Fetch chats ─────────────────────────────────────────────────────────────
 
   const fetchChats = useCallback(async () => {
+    if (fetchingChatsRef.current) return
+    fetchingChatsRef.current = true
     const res = await fetch('/api/admin/support/chats')
     if (res.ok) {
       setChats(await res.json())
     } else {
       console.error('[SupportChat] fetchChats failed:', res.status, await res.text())
     }
+    fetchingChatsRef.current = false
   }, [])
 
   // ── Fetch messages for active chat (with loading spinner) ───────────────────
@@ -78,10 +83,13 @@ export default function SupportChatPanel() {
   // ── Silent poll — refresh messages without spinner ───────────────────────────
 
   const silentRefreshMessages = useCallback(async (chatId: string) => {
+    if (fetchingMessagesRef.current) return
+    fetchingMessagesRef.current = true
     const res = await fetch(`/api/admin/support/${chatId}/messages`)
     if (res.ok) {
       setMessages(await res.json())
     }
+    fetchingMessagesRef.current = false
   }, [])
 
   // ── Keep ref in sync with activeChat state ──────────────────────────────────
@@ -104,11 +112,11 @@ export default function SupportChatPanel() {
     return () => clearInterval(interval)
   }, [fetchChats])
 
-  // ── Poll messages every 3s when a chat is open (Realtime fallback) ───────────
+  // ── Poll messages every 5s when a chat is open (Realtime fallback) ───────────
 
   useEffect(() => {
     if (!activeChat) return
-    const interval = setInterval(() => silentRefreshMessages(activeChat.id), 3000)
+    const interval = setInterval(() => silentRefreshMessages(activeChat.id), 5000)
     return () => clearInterval(interval)
   }, [activeChat, silentRefreshMessages])
 
