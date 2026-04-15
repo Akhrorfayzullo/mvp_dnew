@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic'
 export default async function RequestsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ org_id?: string }>
+  searchParams: Promise<{ org_id?: string; org_name?: string }>
 }) {
-  const { org_id } = await searchParams
+  const { org_id, org_name } = await searchParams
   const supabase = await createServiceClient()
 
   let query = supabase.from('requests').select('*, organizations(name)').order('created_at', { ascending: false })
@@ -49,7 +49,7 @@ export default async function RequestsPage({
             요청 관리
           </h1>
           <p className="text-sm text-muted-foreground">
-            {org_id ? '선택된 병원의 요청사항' : '텔레그램으로 접수된 병원 요청사항'}
+            {org_id ? `${org_name ?? org_id} 요청사항` : '텔레그램으로 접수된 병원 요청사항'}
           </p>
         </div>
         <div className="flex items-center gap-6">

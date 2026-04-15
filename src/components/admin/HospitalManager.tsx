@@ -300,26 +300,28 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
                         {new Date(h.created_at).toLocaleDateString('ko-KR')}
                       </td>
                       <td className="px-4 py-3">
-                        <a
-                          href={`/admin/requests?org_id=${h.id}`}
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                            h.request_summary === 'in_progress'
-                              ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                        {h.request_summary === 'none' ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-400">
+                            없음
+                          </span>
+                        ) : (
+                          <a
+                            href={`/admin/requests?org_id=${h.id}&org_name=${encodeURIComponent(h.name)}`}
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                              h.request_summary === 'in_progress'
+                                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                : h.request_summary === 'pending'
+                                ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                                : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            }`}
+                          >
+                            {h.request_summary === 'in_progress'
+                              ? '진행중'
                               : h.request_summary === 'pending'
-                              ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                              : h.request_summary === 'completed'
-                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                          }`}
-                        >
-                          {h.request_summary === 'in_progress'
-                            ? '진행중'
-                            : h.request_summary === 'pending'
-                            ? '대기중'
-                            : h.request_summary === 'completed'
-                            ? '완료'
-                            : '없음'}
-                        </a>
+                              ? '대기중'
+                              : '완료'}
+                          </a>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
