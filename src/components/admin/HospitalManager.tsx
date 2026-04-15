@@ -182,6 +182,8 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
               email: editForm.email || h.email,
               plan_type: editForm.plan_type,
               credit_balance: parseInt(editForm.credit_balance) || 0,
+              phone: editForm.phone || null,
+              address: editForm.address || null,
             }
           : h
       )
