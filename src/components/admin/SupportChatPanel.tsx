@@ -48,7 +48,7 @@ export default function SupportChatPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
-  const totalUnread = chats.reduce((sum, c) => sum + c.unread_count, 0)
+  const totalUnread = chats.filter((c) => c.unread_count > 0).length
 
   // ── Fetch chats ─────────────────────────────────────────────────────────────
 
@@ -130,6 +130,8 @@ export default function SupportChatPanel() {
 
   function openChat(chat: SupportChat) {
     setActiveChat(chat)
+    // Optimistically clear unread count so bell and badge update instantly
+    setChats((prev) => prev.map((c) => c.id === chat.id ? { ...c, unread_count: 0 } : c))
     fetchMessages(chat.id)
   }
 
