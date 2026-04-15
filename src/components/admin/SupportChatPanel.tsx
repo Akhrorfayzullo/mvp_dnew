@@ -55,7 +55,11 @@ export default function SupportChatPanel() {
 
   const fetchChats = useCallback(async () => {
     const res = await fetch('/api/admin/support/chats')
-    if (res.ok) setChats(await res.json())
+    if (res.ok) {
+      setChats(await res.json())
+    } else {
+      console.error('[SupportChat] fetchChats failed:', res.status, await res.text())
+    }
   }, [])
 
   // ── Fetch messages for active chat ──────────────────────────────────────────

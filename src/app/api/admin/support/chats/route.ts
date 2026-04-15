@@ -17,7 +17,7 @@ export async function GET() {
       org_id,
       status,
       created_at,
-      organizations ( name )
+      organizations!left ( name )
     `)
     .eq('status', 'open')
     .order('created_at', { ascending: false })
