@@ -110,16 +110,20 @@ export default function SupportChatPanel() {
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'support_chats' },
+        { event: 'INSERT', schema: 'public', table: 'support_chats' },
         () => {
           fetchChats()
-          // If active chat was closed externally, reset
-          if (activeChat) {
-            setChats((prev) => {
-              const updated = prev.find((c) => c.id === activeChat.id)
-              if (updated && updated.status === 'closed') setActiveChat(null)
-              return prev
-            })
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'support_chats' },
+        (payload) => {
+          fetchChats()
+          // If active chat was closed by admin on another tab/session, reset
+          if (activeChat && payload.new.id === activeChat.id && payload.new.status === 'closed') {
+            setActiveChat(null)
+            setMessages([])
           }
         }
       )
@@ -176,11 +180,14 @@ export default function SupportChatPanel() {
     if (!activeChat || closing) return
     setClosing(true)
     const closedId = activeChat.id
-    await fetch(`/api/admin/support/${closedId}/close`, { method: 'POST' })
-    setActiveChat(null)
-    setMessages([])
-    setChats((prev) => prev.filter((c) => c.id !== closedId))
+    const res = await fetch(`/api/admin/support/${closedId}/close`, { method: 'POST' })
+    if (res.ok) {
+      setActiveChat(null)
+      setMessages([])
+      setChats((prev) => prev.filter((c) => c.id !== closedId))
+    }
     setClosing(false)
+    fetchChats()
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
