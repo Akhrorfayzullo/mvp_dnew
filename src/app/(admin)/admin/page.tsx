@@ -36,7 +36,7 @@ export default async function AdminPage() {
     owner: '원장',
     admin: '관리자',
     member: '직원',
-    agent: '에이전트',
+
   }
   const severityLabel: Record<string, string> = {
     critical: '긴급',

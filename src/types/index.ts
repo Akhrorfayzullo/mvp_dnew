@@ -1,4 +1,4 @@
-export type UserRole = 'superadmin' | 'owner' | 'admin' | 'member' | 'agent'
+export type UserRole = 'superadmin' | 'owner' | 'admin' | 'member'
 export type PlanType = 'lite' | 'pro' | 'enterprise'
 export type DesignStyle = 'modern' | 'luxury' | 'friendly' | 'professional' | 'trendy'
 

@@ -14,6 +14,5 @@ export default async function Home() {
     .single()
 
   if (userData?.role === 'superadmin') redirect('/admin')
-  if (userData?.role === 'agent') redirect('/agent')
   redirect('/dashboard')
 }

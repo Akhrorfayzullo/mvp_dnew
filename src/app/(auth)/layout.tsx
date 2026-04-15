@@ -13,7 +13,6 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
       .single()
 
     if (userData?.role === 'superadmin') redirect('/admin')
-    if (userData?.role === 'agent') redirect('/agent')
     redirect('/dashboard')
   }
 

@@ -41,8 +41,6 @@ export default function LoginPage() {
 
       if (role === 'superadmin') {
         router.push('/admin')
-      } else if (role === 'agent') {
-        router.push('/agent')
       } else {
         router.push('/dashboard')
       }
