@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/admin/support/chats
 // Returns all open support chats with unread message count
 export async function GET() {
