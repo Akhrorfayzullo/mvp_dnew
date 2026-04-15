@@ -22,6 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
         <div className="flex items-center gap-4">
           <a href="/admin" className="text-sm text-white/70 hover:text-white">개요</a>
+          <a href="/admin/hospitals" className="text-sm text-white/70 hover:text-white">병원 관리</a>
           <a href="/admin/requests" className="text-sm text-white/70 hover:text-white">요청 관리</a>
           <a href="/dashboard" className="text-sm text-white/70 hover:text-white">대시보드로 이동 →</a>
         </div>
