@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Building2, Plus, Pencil, Trash2, KeyRound } from 'lucide-react'
+import { Building2, Plus, Pencil, Trash2, KeyRound, Eye } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 export interface HospitalRow {
@@ -80,6 +80,7 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
   const [editForm, setEditForm] = useState<EditForm | null>(null)
   const [editError, setEditError] = useState('')
   const [editConfirming, setEditConfirming] = useState(false)
+  const [viewTarget, setViewTarget] = useState<HospitalRow | null>(null)
   const [pwTarget, setPwTarget] = useState<HospitalRow | null>(null)
   const [pwValue, setPwValue] = useState('')
   const [pwConfirming, setPwConfirming] = useState(false)
@@ -323,6 +324,13 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <button
+                            onClick={() => setViewTarget(h)}
+                            className="text-gray-300 hover:text-purple-500 transition-colors"
+                            title="상세보기"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => openEdit(h)}
                             className="text-gray-300 hover:text-blue-500 transition-colors"
                             title="수정"
@@ -525,6 +533,79 @@ export default function HospitalManager({ initial }: { initial: HospitalRow[] })
                 </DialogFooter>
               </div>
             )
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail view dialog */}
+      <Dialog open={!!viewTarget} onOpenChange={(open) => !open && setViewTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-purple-600" />
+              병원 상세 정보
+            </DialogTitle>
+          </DialogHeader>
+
+          {viewTarget && (
+            <div className="space-y-4 pt-1">
+              {/* Header card */}
+              <div className="bg-purple-50 rounded-xl p-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-white font-bold text-sm">{viewTarget.name.charAt(0)}</span>
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900">{viewTarget.name}</p>
+                  <p className="text-xs text-gray-500">{viewTarget.specialty}</p>
+                </div>
+                <div className="ml-auto">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${PLAN_COLOR[viewTarget.plan_type] ?? PLAN_COLOR.lite}`}>
+                    {PLAN_LABEL[viewTarget.plan_type] ?? viewTarget.plan_type}
+                  </span>
+                </div>
+              </div>
+
+              {/* Info rows */}
+              <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+                {[
+                  { label: '이메일', value: viewTarget.email ?? '-' },
+                  { label: '전화번호', value: viewTarget.phone ?? '-' },
+                  { label: '주소', value: viewTarget.address ?? '-' },
+                  { label: '크레딧 잔액', value: `${viewTarget.credit_balance.toLocaleString()} 크레딧` },
+                  { label: '텔레그램', value: viewTarget.telegram_verified ? '✅ 인증됨' : '❌ 미인증' },
+                  { label: '등록일', value: new Date(viewTarget.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between items-center px-4 py-3 bg-white hover:bg-gray-50 transition-colors">
+                    <span className="text-sm text-gray-500">{label}</span>
+                    <span className="text-sm font-medium text-gray-900 text-right max-w-[220px] truncate">{value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Request summary */}
+              <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-xl">
+                <span className="text-sm text-gray-500">요청 현황</span>
+                <a
+                  href={`/admin/requests?org_id=${viewTarget.id}`}
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                    viewTarget.request_summary === 'in_progress' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    : viewTarget.request_summary === 'pending' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                    : viewTarget.request_summary === 'completed' ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                    : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  {viewTarget.request_summary === 'in_progress' ? '진행중'
+                    : viewTarget.request_summary === 'pending' ? '대기중'
+                    : viewTarget.request_summary === 'completed' ? '완료'
+                    : '없음'}
+                </a>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setViewTarget(null)}>닫기</Button>
+                <Button className="bg-purple-900 hover:bg-purple-800" onClick={() => { setViewTarget(null); openEdit(viewTarget) }}>수정하기</Button>
+              </DialogFooter>
+            </div>
           )}
         </DialogContent>
       </Dialog>
