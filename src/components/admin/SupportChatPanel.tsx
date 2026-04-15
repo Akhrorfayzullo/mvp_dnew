@@ -80,12 +80,7 @@ export default function SupportChatPanel() {
   const silentRefreshMessages = useCallback(async (chatId: string) => {
     const res = await fetch(`/api/admin/support/${chatId}/messages`)
     if (res.ok) {
-      const fresh: SupportMessage[] = await res.json()
-      setMessages((prev) => {
-        // Only update if there are new messages to avoid unnecessary re-renders
-        if (fresh.length !== prev.length) return fresh
-        return prev
-      })
+      setMessages(await res.json())
     }
   }, [])
 
@@ -180,25 +175,16 @@ export default function SupportChatPanel() {
     const text = input.trim()
     setInput('')
 
-    // Optimistic update
-    const optimistic: SupportMessage = {
-      id: `tmp-${Date.now()}`,
-      sender: 'admin',
-      content: text,
-      read_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-    }
-    setMessages((prev) => [...prev, optimistic])
-
     const res = await fetch(`/api/admin/support/${activeChat.id}/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text }),
     })
 
-    if (!res.ok) {
-      // Rollback optimistic update
-      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id))
+    if (res.ok) {
+      // Fetch fresh messages immediately after send
+      await silentRefreshMessages(activeChat.id)
+    } else {
       setInput(text)
     }
 
