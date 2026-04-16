@@ -135,12 +135,15 @@ function buildMonthBlock(y: number, m: number, sDate: Date, eDate: Date, db: Rec
   while (cells.length % 7 !== 0) cells.push(null)
   let rows = ''
   for (let r = 0; r < cells.length; r += 7) {
-    const tds = cells.slice(r, r + 7).map((c) => {
-      if (!c) return `<td style="padding:4px"></td>`
-      const { d, rec, inRange, dow } = c
+    const rowCells = cells.slice(r, r + 7)
+    // Skip entire row if no cell in this week is within the range
+    if (!rowCells.some(c => c && c.inRange)) continue
+    const tds = rowCells.map((c) => {
+      if (!c || !c.inRange) return `<td style="padding:4px;min-height:42px"></td>`
+      const { d, rec, dow } = c
       const sc = rec.state ? SCFG[rec.state] : null
       const numColor = dow === 0 ? '#C41F2E' : dow === 6 ? '#1D58D0' : '#1A2332'
-      return `<td style="text-align:center;padding:3px 2px;opacity:${inRange ? 1 : 0.38};vertical-align:top">
+      return `<td style="text-align:center;padding:3px 2px;vertical-align:top">
         <div style="background:${sc ? sc.bg : 'transparent'};border-radius:6px;padding:3px 1px;min-height:42px">
           <div style="font-size:12px;font-weight:700;color:${numColor}">${d}</div>
           ${sc ? `<div style="font-size:8.5px;font-weight:800;color:${sc.color}">${sc.text.trim()}</div>` : ''}
