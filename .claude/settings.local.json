@@ -31,7 +31,9 @@
       "Bash(git push:*)",
       "Bash(git commit:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx vercel:*)"
+      "Bash(npx vercel:*)",
+      "Bash(dir \"C:\\\\Users\\\\alion\\\\Desktop\\\\dnew\\\\src\\\\app\")",
+      "Bash(npm i *)"
     ]
   }
 }

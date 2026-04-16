@@ -1,12 +1,13 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Building2, MessageSquare } from 'lucide-react'
+import { LayoutDashboard, Building2, MessageSquare, CalendarDays } from 'lucide-react'
 
 const NAV = [
   { href: '/admin', label: '대시보드', icon: LayoutDashboard, exact: true },
   { href: '/admin/hospitals', label: '병원 관리', icon: Building2, exact: false },
   { href: '/admin/requests', label: '요청 관리', icon: MessageSquare, exact: false },
+  { href: '/admin/schedule', label: '진료일정 관리', icon: CalendarDays, exact: false },
 ]
 
 export default function AdminNav() {
