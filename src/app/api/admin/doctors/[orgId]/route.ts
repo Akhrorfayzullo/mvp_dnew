@@ -17,13 +17,14 @@ export async function GET(
   const supabase = await createServiceClient()
   const { orgId } = params
 
-  let { data: doctors, error } = await supabase
+  // eslint-disable-next-line prefer-const
+  let { data: doctors, error: fetchError } = await supabase
     .from('hospital_doctors')
     .select('*')
     .eq('org_id', orgId)
     .order('sort_order', { ascending: true })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
 
   // Auto-seed 4 doctors if none exist
   if (!doctors || doctors.length === 0) {

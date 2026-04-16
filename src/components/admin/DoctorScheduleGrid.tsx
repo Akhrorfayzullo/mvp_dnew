@@ -128,7 +128,6 @@ export default function DoctorScheduleGrid({ orgId }: Props) {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [bulkSaving, setBulkSaving] = useState(false)
-  const [dbSlotCount, setDbSlotCount] = useState<number | null>(null)
 
   // Inline doctor manager
   const [editDoctors, setEditDoctors] = useState<Doctor[]>([])
@@ -184,14 +183,11 @@ export default function DoctorScheduleGrid({ orgId }: Props) {
       if (slotsJson.error) setSaveError(`일정 로딩 오류: ${slotsJson.error}`)
 
       const rawSlots: Slot[] = slotsJson.slots ?? []
-      console.log('[loadData] loaded', rawSlots.length, 'slots from DB for', y, m, rawSlots.slice(0, 5))
-      setDbSlotCount(rawSlots.length)
       const map: Record<string, Record<string, string>> = {}
       rawSlots.forEach((s) => {
         if (!map[s.date]) map[s.date] = {}
         map[s.date][s.doctor_id] = s.time_slot
       })
-      console.log('[loadData] slot map keys:', Object.keys(map).slice(0, 5))
       setSlots(map)
     } catch (err) {
       if (myId === loadIdRef.current)
@@ -225,7 +221,6 @@ export default function DoctorScheduleGrid({ orgId }: Props) {
   async function saveSlot(date: string, doctorId: string, timeSlot: string) {
     const cellKey = `${date}__${doctorId}`
     const prevValue = slots[date]?.[doctorId]
-    console.log('[saveSlot] saving', { date, doctorId, timeSlot, prevValue })
     setSlots((prev) => {
       const next = { ...prev }
       if (!next[date]) next[date] = {}
@@ -241,7 +236,6 @@ export default function DoctorScheduleGrid({ orgId }: Props) {
         body: JSON.stringify({ upserts: [{ doctor_id: doctorId, date, time_slot: timeSlot }] }),
       })
       const json = await res.json()
-      console.log('[saveSlot] response', res.status, json)
       if (!res.ok || json.error) throw new Error(json.error ?? `저장 실패 (${res.status})`)
       setLastSaved(new Date())
     } catch (err) {
