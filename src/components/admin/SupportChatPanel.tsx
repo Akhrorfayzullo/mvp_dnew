@@ -94,9 +94,7 @@ export default function SupportChatPanel() {
       setMessages(nextMessages)
       fetchChats()
     } finally {
-      if (latestMessagesRequestRef.current === requestId) {
-        setLoadingMessages(false)
-      }
+      setLoadingMessages(false)
     }
   }, [fetchChats])
 
@@ -228,20 +226,24 @@ export default function SupportChatPanel() {
     const text = input.trim()
     setInput('')
 
-    const res = await fetch(`/api/admin/support/${activeChat.id}/send`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text }),
-    })
+    try {
+      const res = await fetch(`/api/admin/support/${activeChat.id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      })
 
-    if (res.ok) {
-      // Fetch fresh messages immediately after send
-      await silentRefreshMessages(activeChat.id)
-    } else {
+      if (res.ok) {
+        // Fetch fresh messages immediately after send
+        await silentRefreshMessages(activeChat.id)
+      } else {
+        setInput(text)
+      }
+    } catch {
       setInput(text)
+    } finally {
+      setSending(false)
     }
-
-    setSending(false)
   }
 
   // ── Close chat ──────────────────────────────────────────────────────────────
@@ -250,14 +252,17 @@ export default function SupportChatPanel() {
     if (!activeChat || closing) return
     setClosing(true)
     const closedId = activeChat.id
-    const res = await fetch(`/api/admin/support/${closedId}/close`, { method: 'POST' })
-    if (res.ok) {
-      setActiveChat(null)
-      setMessages([])
-      setChats((prev) => prev.filter((c) => c.id !== closedId))
+    try {
+      const res = await fetch(`/api/admin/support/${closedId}/close`, { method: 'POST' })
+      if (res.ok) {
+        setActiveChat(null)
+        setMessages([])
+        setChats((prev) => prev.filter((c) => c.id !== closedId))
+      }
+    } finally {
+      setClosing(false)
+      fetchChats()
     }
-    setClosing(false)
-    fetchChats()
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────

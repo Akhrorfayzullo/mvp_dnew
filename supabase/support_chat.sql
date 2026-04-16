@@ -40,11 +40,27 @@ CREATE INDEX IF NOT EXISTS idx_support_messages_chat_id     ON support_messages(
 CREATE INDEX IF NOT EXISTS idx_support_messages_unread      ON support_messages(support_chat_id, read_at) WHERE read_at IS NULL;
 
 -- ── RLS ───────────────────────────────────────────────────────────────────────
--- SuperAdmin accesses these via service role (bypasses RLS).
--- No direct client-side access needed, so we just enable RLS with no permissive policies.
+-- Write paths use the service role (bypasses RLS).
+-- SELECT policies are needed so that the admin browser client can receive
+-- Supabase Realtime postgres_changes events (Realtime uses the auth token and
+-- checks RLS before delivering events; without a SELECT policy no events fire).
 
 ALTER TABLE support_chats    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_messages ENABLE ROW LEVEL SECURITY;
+
+-- Superadmin can select support chats (required for Realtime to fire)
+CREATE POLICY "superadmin_select_support_chats" ON support_chats
+  FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'superadmin')
+  );
+
+-- Superadmin can select support messages (required for Realtime to fire)
+CREATE POLICY "superadmin_select_support_messages" ON support_messages
+  FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'superadmin')
+  );
 
 -- ── Realtime ──────────────────────────────────────────────────────────────────
 -- Enable Supabase Realtime on both tables so the admin panel gets live updates.
